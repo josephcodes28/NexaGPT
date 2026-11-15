@@ -717,105 +717,136 @@ async function requestJSON(url, options = {}) {
       }));
   }
 
-  async function sendBrainMessage(message) {
-    if (state.isSending) return;
+  
+async function sendBrainMessage(message) {
+  if (state.isSending) return;
 
-    const text = String(message || "").trim();
+  const text = String(message || "").trim();
 
-    if (!text && !state.attachments.length) {
-      showToast("Write a message or attach a file first.", "warning");
+  if (!text && !state.attachments.length) {
+    showToast("Write a message or attach a file first.", "warning");
+    return;
+  }
+
+  const attachments = [...state.attachments];
+  const controller = new AbortController();
+
+  state.isSending = true;
+  state.brainRequestController = controller;
+  state.speechStopped = false;
+
+  const sendButton = byId("sendBrainButton");
+  if (sendButton) sendButton.disabled = true;
+
+  addMessage(
+    "user",
+    text || "Please examine the attached file.",
+    attachments
+  );
+
+  state.attachments = [];
+  renderAttachments();
+
+  const input = byId("brainInput");
+  if (input) {
+    input.value = "";
+    autoResizeTextarea(input);
+  }
+
+  setGlobalLoading(
+    true,
+    "Joseph AI is thinking...",
+    "Preparing your response."
+  );
+
+  setStatus("connectionText", "Working");
+
+  try {
+    const encodedAttachments = [];
+
+    for (const file of attachments) {
+      if (controller.signal.aborted) return;
+
+      encodedAttachments.push({
+        name: file.name,
+        type: file.type,
+        data: await readFileAsDataURL(file)
+      });
+    }
+
+    if (controller.signal.aborted) return;
+
+    const data = await requestJSON(CONFIG.api.chat, {
+      method: "POST",
+      signal: controller.signal,
+      body: JSON.stringify({
+        message: text,
+        conversation: getConversationForAPI(),
+        attachments: encodedAttachments,
+        settings: {
+          webSearch: getSettings().webSearch !== false,
+          model: getSettings().defaultModel || "auto"
+        }
+      })
+    });
+
+    if (controller.signal.aborted) return;
+
+    const reply =
+      data.reply ||
+      data.response ||
+      data.message ||
+      data.text;
+
+    if (!reply || typeof reply !== "string") {
+      throw new Error(
+        "The AI service returned no readable response."
+      );
+    }
+
+    if (controller.signal.aborted) return;
+
+    addMessage("assistant", reply);
+    recordActivity("Conversation response received", "chat");
+
+    if (
+      getSettings().speakResponses &&
+      !state.speechStopped &&
+      !controller.signal.aborted
+    ) {
+      speakText(reply);
+    }
+
+    setStatus("connectionText", "Ready");
+
+  } catch (error) {
+    if (
+      controller.signal.aborted ||
+      error.name === "AbortError"
+    ) {
+      setStatus("connectionText", "Ready");
       return;
     }
 
-    const attachments = [...state.attachments];
-
-    state.isSending = true;
-
-    const sendButton = byId("sendBrainButton");
-    if (sendButton) sendButton.disabled = true;
-
     addMessage(
-      "user",
-      text || "Please examine the attached file.",
-      attachments
+      "assistant",
+      `I couldn't complete that request. ${error.message}\n\nPlease check that the chat backend is deployed and configured.`
     );
 
-    state.attachments = [];
-    renderAttachments();
+    setStatus("connectionText", "Connection issue");
+    showToast(error.message, "error");
 
-    const input = byId("brainInput");
-    if (input) {
-      input.value = "";
-      autoResizeTextarea(input);
-    }
-
-    setGlobalLoading(
-      true,
-      "Joseph AI is thinking...",
-      "Preparing your response."
-    );
-
-    setStatus("connectionText", "Working");
-
-    try {
-      const encodedAttachments = [];
-
-      for (const file of attachments) {
-        encodedAttachments.push({
-          name: file.name,
-          type: file.type,
-          data: await readFileAsDataURL(file)
-        });
-      }
-
-      const data = await requestJSON(CONFIG.api.chat, {
-        method: "POST",
-        body: JSON.stringify({
-          message: text,
-          conversation: getConversationForAPI(),
-          attachments: encodedAttachments,
-          settings: {
-            webSearch: getSettings().webSearch !== false,
-            model: getSettings().defaultModel || "auto"
-          }
-        })
-      });
-
-      const reply =
-        data.reply ||
-        data.response ||
-        data.message ||
-        data.text;
-
-      if (!reply || typeof reply !== "string") {
-        throw new Error(
-          "The AI service returned no readable response."
-        );
-      }
-
-      addMessage("assistant", reply);
-      recordActivity("Conversation response received", "chat");
-
-      if (getSettings().speakResponses) {
-        speakText(reply);
-      }
-
-      setStatus("connectionText", "Ready");
-    } catch (error) {
-      addMessage(
-        "assistant",
-        `I couldn't complete that request. ${error.message}\n\nPlease check that the chat backend is deployed and configured.`
-      );
-
-      setStatus("connectionText", "Connection issue");
-      showToast(error.message, "error");
-    } finally {
+  } finally {
+    if (state.brainRequestController === controller) {
+      state.brainRequestController = null;
       state.isSending = false;
+
       if (sendButton) sendButton.disabled = false;
 
       setGlobalLoading(false);
     }
   }
+       }
 
   function setupBrain() {
     byId("brainForm")?.addEventListener("submit", event => {
