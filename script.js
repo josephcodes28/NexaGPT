@@ -1039,7 +1039,17 @@ async function sendBrainMessage(message) {
     window.speechSynthesis.speak(utterance);
   }
 
-  function stopSpeaking() {
+  
+function stopSpeaking() {
+  // Mark speech as stopped.
+  state.speechStopped = true;
+
+  // Cancel the active Brain request.
+  if (state.brainRequestController) {
+    state.brainRequestController.abort();
+    state.brainRequestController = null;
+  }
+
   // Stop all speech immediately.
   if ("speechSynthesis" in window) {
     window.speechSynthesis.cancel();
@@ -1049,16 +1059,21 @@ async function sendBrainMessage(message) {
   // Stop microphone recognition.
   stopVoiceRecognition();
 
+  // Restore the Send button.
+  const sendButton = byId("sendBrainButton");
+  if (sendButton) sendButton.disabled = false;
+
   // Hide the Stop button.
   const button = byId("stopSpeakingButton");
+  if (button) button.hidden = true;
 
-  if (button) {
-    button.hidden = true;
-  }
+  // Remove the loading screen.
+  setGlobalLoading(false);
 
-  // Prevent any pending speech from continuing.
-  state.speechStopped = true;
-  }
+  state.isSending = false;
+
+  setStatus("connectionText", "Ready");
+} 
 
   /* =======================================================
      VOICE CONVERSATION
