@@ -220,63 +220,90 @@ const JosephAI = (() => {
     }
   }
 
-  async function requestJSON(url, options = {}) {
-    const controller = new AbortController();
+  
+async function requestJSON(url, options = {}) {
+  const controller = new AbortController();
+  const externalSignal = options.signal;
 
-    const timeout = window.setTimeout(
-      () => controller.abort(),
-      options.timeout || CONFIG.requestTimeout
-    );
+  const abortRequest = () => controller.abort();
 
-    try {
-      const response = await fetch(url, {
-        ...options,
-        signal: controller.signal,
-        headers: {
-          ...(options.body instanceof FormData
-            ? {}
-            : { "Content-Type": "application/json" }),
-          ...(options.headers || {})
-        }
-      });
-
-      const text = await response.text();
-      let data = {};
-
-      try {
-        data = text ? JSON.parse(text) : {};
-      } catch {
-        data = { text };
-      }
-
-      if (!response.ok) {
-        throw new Error(
-          data.error ||
-          data.message ||
-          `Server returned error ${response.status}`
-        );
-      }
-
-      return data;
-    } catch (error) {
-      if (error.name === "AbortError") {
-        throw new Error(
-          "The request took too long. Please try again."
-        );
-      }
-
-      if (error instanceof TypeError) {
-        throw new Error(
-          "Could not connect to the service. Check your internet connection and backend deployment."
-        );
-      }
-
-      throw error;
-    } finally {
-      window.clearTimeout(timeout);
+  if (externalSignal) {
+    if (externalSignal.aborted) {
+      controller.abort();
+    } else {
+      externalSignal.addEventListener(
+        "abort",
+        abortRequest,
+        { once: true }
+      );
     }
   }
 
+  const timeout = window.setTimeout(
+    () => controller.abort(),
+    options.timeout || CONFIG.requestTimeout
+  );
+
+  try {
+    const response = await fetch(url, {
+      ...options,
+      signal: controller.signal,
+      headers: {
+        ...(options.body instanceof FormData
+          ? {}
+          : { "Content-Type": "application/json" }),
+        ...(options.headers || {})
+      }
+    });
+
+    const text = await response.text();
+    let data = {};
+
+    try {
+      data = text ? JSON.parse(text) : {};
+    } catch {
+      data = { text };
+    }
+
+    if (!response.ok) {
+      throw new Error(
+        data.error ||
+        data.message ||
+        `Server returned error ${response.status}`
+      );
+    }
+
+    return data;
+
+  } catch (error) {
+    if (error.name === "AbortError") {
+      if (externalSignal?.aborted) {
+        throw error;
+      }
+
+      throw new Error(
+        "The request took too long. Please try again."
+      );
+    }
+
+    if (error instanceof TypeError) {
+      throw new Error(
+        "Could not connect to the service. Check your internet connection and backend deployment."
+      );
+    }
+
+    throw error;
+
+  } finally {
+    window.clearTimeout(timeout);
+
+    externalSignal?.removeEventListener(
+      "abort",
+      abortRequest
+    );
+  }
+}
+   
   function downloadFile(filename, content, type = "text/plain") {
     const blob = new Blob([content], { type });
     const url = URL.createObjectURL(blob);
