@@ -3,9 +3,9 @@
 <html lang="en">
 <head>
   <meta charset="UTF-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <meta name="theme-color" content="#101116">
-  <meta name="description" content="Joseph AI — Your intelligent AI assistant and work partner.">
+  <meta name="description" content="Joseph AI — Your intelligent AI assistant and digital work partner.">
   <title>Joseph AI</title>
 
   <link rel="preconnect" href="https://fonts.googleapis.com">
@@ -13,7 +13,6 @@
   <link href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@400;500;600;700&family=Space+Grotesk:wght@400;500;600;700&display=swap" rel="stylesheet">
 
   <link rel="stylesheet" href="style.css">
-  <script src="script.js" defer></script>
 </head>
 
 <body>
@@ -26,17 +25,14 @@
     <aside class="sidebar" id="sidebar">
 
       <div class="sidebar-top">
-        <a href="#" class="brand" aria-label="Joseph AI home">
-          <div class="brand-logo">J</div>
-          <div class="brand-text">
-            <strong>JOSEPH AI</strong>
-            <span>Your intelligent assistant</span>
-          </div>
+        <a class="brand" href="#" aria-label="Joseph AI home">
+          <span class="brand-icon">J</span>
+          <span class="brand-name">Joseph AI</span>
         </a>
 
         <button
           class="icon-button sidebar-close"
-          id="sidebarClose"
+          id="closeSidebarButton"
           type="button"
           aria-label="Close sidebar"
         >×</button>
@@ -48,67 +44,69 @@
       </button>
 
       <div class="sidebar-search">
-        <span>⌕</span>
+        <span class="search-icon">⌕</span>
         <input
-          type="search"
           id="conversationSearch"
+          type="search"
           placeholder="Search conversations"
           autocomplete="off"
         >
       </div>
 
-      <nav class="sidebar-navigation">
+      <div class="sidebar-content">
 
-        <div class="nav-group">
-          <div class="nav-heading">WORKSPACE</div>
+        <div class="sidebar-section">
+          <p class="sidebar-label">WORKSPACE</p>
 
-          <button class="nav-item active" type="button" data-page="brain">
-            <span class="nav-icon">✧</span>
-            <span>Joseph AI</span>
+          <button class="sidebar-item active" data-page="brain" type="button">
+            <span class="sidebar-item-icon">◉</span>
+            <span>Assistant</span>
           </button>
 
-          <button class="nav-item" type="button" data-page="projects">
-            <span class="nav-icon">▣</span>
+          <button class="sidebar-item" data-page="projects" type="button">
+            <span class="sidebar-item-icon">▣</span>
             <span>Projects</span>
           </button>
 
-          <button class="nav-item" type="button" data-page="autopilot">
-            <span class="nav-icon">◈</span>
+          <button class="sidebar-item" data-page="autopilot" type="button">
+            <span class="sidebar-item-icon">✧</span>
             <span>Autopilot</span>
           </button>
         </div>
 
-        <div class="nav-group">
-          <div class="nav-heading">YOUR CONVERSATIONS</div>
+        <div class="sidebar-section history-section">
+          <div class="sidebar-section-heading">
+            <p class="sidebar-label">YOUR CHATS</p>
+          </div>
+
           <div id="conversationHistoryList" class="conversation-history-list">
-            <div class="sidebar-empty">Your conversations will appear here.</div>
+            <div class="history-empty">
+              Your conversations will appear here.
+            </div>
           </div>
         </div>
 
-      </nav>
+      </div>
 
       <div class="sidebar-bottom">
-
-        <button class="nav-item" type="button" data-page="memory">
-          <span class="nav-icon">◇</span>
+        <button class="sidebar-item" data-page="memory" type="button">
+          <span class="sidebar-item-icon">◈</span>
           <span>Memory</span>
         </button>
 
-        <button class="nav-item" type="button" data-page="settings">
-          <span class="nav-icon">⚙</span>
+        <button class="sidebar-item" data-page="settings" type="button">
+          <span class="sidebar-item-icon">⚙</span>
           <span>Settings</span>
         </button>
 
-        <div class="workspace-card">
-          <div class="workspace-avatar">J</div>
-          <div class="workspace-info">
-            <strong>Joseph AI Workspace</strong>
-            <span>Personal assistant</span>
+        <div class="sidebar-profile">
+          <div class="profile-avatar">J</div>
+          <div class="profile-details">
+            <strong>Joseph AI</strong>
+            <span>Personal workspace</span>
           </div>
-          <span class="workspace-menu">•••</span>
+          <span class="profile-menu-icon">•••</span>
         </div>
-
-        <div class="sidebar-version">Joseph AI V2</div>
       </div>
 
     </aside>
@@ -127,23 +125,22 @@
             aria-label="Open sidebar"
           >☰</button>
 
-          <button
-            class="icon-button back-button"
-            id="backButton"
-            type="button"
-            aria-label="Go back"
-          >←</button>
-
-          <div class="breadcrumb">
-            <span class="breadcrumb-brand">Joseph AI</span>
-            <span class="breadcrumb-divider">/</span>
-            <span id="currentPageName">New conversation</span>
+          <div class="mobile-brand">
+            <span class="brand-icon small-brand-icon">J</span>
+            <strong>Joseph AI</strong>
           </div>
+        </div>
+
+        <div class="topbar-center">
+          <button class="model-selector" id="modelSelector" type="button">
+            <span id="currentModelName">Joseph AI</span>
+            <span class="model-chevron">⌄</span>
+          </button>
         </div>
 
         <div class="topbar-right">
           <div class="connection-status" id="connectionStatus">
-            <span class="status-dot"></span>
+            <span class="connection-dot"></span>
             <span id="connectionText">Ready</span>
           </div>
 
@@ -153,516 +150,427 @@
             type="button"
             aria-label="Change theme"
             title="Change theme"
-          >☼</button>
-
-          <button
-            class="icon-button"
-            id="profileButton"
-            type="button"
-            aria-label="Profile"
-          >J</button>
+          >◐</button>
         </div>
 
       </header>
 
-      <!-- PAGE CONTAINER -->
-      <div class="page-container">
+      <!-- CHAT PAGE -->
+      <section class="page-section active" id="page-brain" data-page-section="brain">
 
-        <!-- MAIN CHAT PAGE -->
-        <section
-          class="page-section active"
-          id="page-brain"
-          data-page-section="brain"
-        >
+        <div class="chat-layout">
 
-          <div class="brain-layout">
+          <!-- MESSAGES -->
+          <div class="chat-scroll-area" id="chatScrollArea">
 
-            <div class="chat-main">
+            <div class="chat-messages" id="chatMessages">
 
-              <div class="chat-topline">
-                <div>
-                  <div class="page-eyebrow">YOUR AI WORK PARTNER</div>
-                  <h1 id="chatHeading">How can I help you today?</h1>
+              <!-- WELCOME SCREEN -->
+              <div class="brain-welcome" id="brainWelcome">
+
+                <div class="welcome-logo">
+                  <span>J</span>
                 </div>
 
-                <button
-                  class="secondary-button"
-                  id="clearChatButton"
-                  type="button"
-                >Clear chat</button>
-              </div>
+                <h1>How can I help you today?</h1>
 
-              <!-- CHAT MESSAGES -->
-              <div
-                class="chat-messages"
-                id="chatMessages"
-                aria-live="polite"
-                aria-label="Conversation"
-              >
-
-                <div class="welcome-screen" id="brainWelcome">
-
-                  <div class="welcome-symbol">✧</div>
-
-                  <h2>Meet your intelligent work partner.</h2>
-
-                  <p>
-                    Ask questions, research the internet, create content,
-                    build websites, discover real work opportunities,
-                    and manage projects — all in one conversation.
-                  </p>
-
-                  <div class="suggestion-grid">
-
-                    <button
-                      class="suggestion-card"
-                      type="button"
-                      data-prompt="Find legitimate remote website developer jobs that accept applicants from Nigeria. Show the application links and disclosed pay."
-                    >
-                      <span class="suggestion-icon">⌕</span>
-                      <strong>Find remote jobs</strong>
-                      <small>Discover real online opportunities.</small>
-                    </button>
-
-                    <button
-                      class="suggestion-card"
-                      type="button"
-                      data-prompt="Help me build a professional, responsive website for a real business."
-                    >
-                      <span class="suggestion-icon">▤</span>
-                      <strong>Build a website</strong>
-                      <small>Create a professional business website.</small>
-                    </button>
-
-                    <button
-                      class="suggestion-card"
-                      type="button"
-                      data-prompt="Research a topic using current internet sources and explain the important findings."
-                    >
-                      <span class="suggestion-icon">◎</span>
-                      <strong>Research anything</strong>
-                      <small>Find information and useful sources.</small>
-                    </button>
-
-                    <button
-                      class="suggestion-card"
-                      type="button"
-                      data-prompt="Help me create professional content for my business or social media."
-                    >
-                      <span class="suggestion-icon">✎</span>
-                      <strong>Create content</strong>
-                      <small>Write, plan and improve content.</small>
-                    </button>
-
-                  </div>
-                </div>
-
-              </div>
-
-              <!-- ATTACHMENT PREVIEW -->
-              <div
-                class="attachment-preview"
-                id="attachmentPreview"
-                hidden
-              >
-                <div class="attachment-list" id="attachmentList"></div>
-
-                <button
-                  class="icon-button"
-                  id="clearAttachmentsButton"
-                  type="button"
-                  aria-label="Remove attachments"
-                >×</button>
-              </div>
-
-              <!-- MESSAGE COMPOSER -->
-              <div class="composer-area">
-
-                <form class="chat-composer" id="brainForm">
-
-                  <textarea
-                    id="brainInput"
-                    name="message"
-                    rows="1"
-                    placeholder="Message Joseph AI..."
-                    aria-label="Message Joseph AI"
-                    autocomplete="off"
-                  ></textarea>
-
-                  <div class="composer-toolbar">
-
-                    <div class="composer-tools">
-
-                      <button
-                        class="composer-tool"
-                        id="attachFileButton"
-                        type="button"
-                      >
-                        <span>＋</span>
-                        <span>Attach</span>
-                      </button>
-
-                      <button
-                        class="composer-tool"
-                        id="brainImageButton"
-                        type="button"
-                      >
-                        <span>▧</span>
-                        <span>Image</span>
-                      </button>
-
-                      <button
-                        class="composer-tool"
-                        id="brainVoiceButton"
-                        type="button"
-                      >
-                        <span>♩</span>
-                        <span>Voice</span>
-                      </button>
-
-                    </div>
-
-                    <div class="composer-actions">
-
-                      <button
-                        class="icon-button stop-speaking-button"
-                        id="stopSpeakingButton"
-                        type="button"
-                        aria-label="Stop response"
-                        title="Stop"
-                        hidden
-                      >■</button>
-
-                      <button
-                        class="send-button"
-                        id="sendBrainButton"
-                        type="submit"
-                        aria-label="Send message"
-                      >↑</button>
-
-                    </div>
-
-                  </div>
-
-                </form>
-
-                <input
-                  type="file"
-                  id="brainFileInput"
-                  hidden
-                  multiple
-                  accept=".pdf,.txt,.doc,.docx,.csv,.json,.html,.css,.js,.png,.jpg,.jpeg,.webp"
-                >
-
-                <input
-                  type="file"
-                  id="brainImageInput"
-                  hidden
-                  accept="image/*"
-                  multiple
-                >
-
-                <p class="composer-disclaimer">
-                  Joseph AI can make mistakes. Verify important information.
+                <p>
+                  I'm Joseph AI, your intelligent assistant and digital work partner.
+                  Tell me what you want to do.
                 </p>
 
-              </div>
+                <div class="welcome-capabilities">
 
-            </div>
+                  <button class="prompt-card" data-prompt="Research something on the internet and explain the findings." type="button">
+                    <span class="prompt-icon">⌕</span>
+                    <span>
+                      <strong>Research anything</strong>
+                      <small>Find information and useful answers</small>
+                    </span>
+                  </button>
 
-          </div>
+                  <button class="prompt-card" data-prompt="Help me create a professional website for a business." type="button">
+                    <span class="prompt-icon">⌘</span>
+                    <span>
+                      <strong>Build a website</strong>
+                      <small>Create professional websites and projects</small>
+                    </span>
+                  </button>
 
-        </section>
+                  <button class="prompt-card" data-prompt="Find legitimate remote jobs that accept applicants from Nigeria. Show real listings and their links." type="button">
+                    <span class="prompt-icon">↗</span>
+                    <span>
+                      <strong>Find online work</strong>
+                      <small>Explore real jobs and opportunities</small>
+                    </span>
+                  </button>
 
-        <!-- PROJECTS -->
-        <section
-          class="page-section"
-          id="page-projects"
-          data-page-section="projects"
-        >
+                  <button class="prompt-card" data-prompt="Help me create content for social media." type="button">
+                    <span class="prompt-icon">✧</span>
+                    <span>
+                      <strong>Create content</strong>
+                      <small>Write, plan and develop content</small>
+                    </span>
+                  </button>
 
-          <div class="section-header">
-            <div class="page-eyebrow">YOUR WORKSPACE</div>
-            <h1>Projects</h1>
-            <p>Your websites, apps, games and other saved work.</p>
-          </div>
-
-          <div class="project-filter-bar">
-            <button class="filter-button active" data-project-filter="all" type="button">All</button>
-            <button class="filter-button" data-project-filter="website" type="button">Websites</button>
-            <button class="filter-button" data-project-filter="app" type="button">Apps</button>
-            <button class="filter-button" data-project-filter="game" type="button">Games</button>
-            <button class="filter-button" data-project-filter="content" type="button">Content</button>
-          </div>
-
-          <div class="project-grid" id="allProjectsList">
-            <div class="empty-state">
-              <span>▣</span>
-              <h3>No saved projects yet</h3>
-              <p>Ask Joseph AI to create something and save it to your workspace.</p>
-            </div>
-          </div>
-
-        </section>
-
-        <!-- AUTOPILOT -->
-        <section
-          class="page-section"
-          id="page-autopilot"
-          data-page-section="autopilot"
-        >
-
-          <div class="section-header">
-            <div class="page-eyebrow">YOUR OPPORTUNITY ASSISTANT</div>
-            <h1>Autopilot</h1>
-            <p>Discover opportunities and organise your next work tasks.</p>
-          </div>
-
-          <div class="workspace-card-large autopilot-banner">
-            <div class="autopilot-symbol">◈</div>
-            <div>
-              <h2>Your next opportunity starts here.</h2>
-              <p>
-                Joseph AI will help discover legitimate work opportunities,
-                organise tasks and prepare work for your approval.
-              </p>
-            </div>
-          </div>
-
-          <div class="dashboard-grid">
-
-            <div class="stat-card">
-              <span class="stat-icon">◎</span>
-              <strong id="autopilotOpportunityCount">0</strong>
-              <span>Opportunities</span>
-            </div>
-
-            <div class="stat-card">
-              <span class="stat-icon">▣</span>
-              <strong id="autopilotTaskCount">0</strong>
-              <span>Tasks</span>
-            </div>
-
-            <div class="stat-card">
-              <span class="stat-icon">✓</span>
-              <strong id="autopilotCompletedCount">0</strong>
-              <span>Completed</span>
-            </div>
-
-          </div>
-
-          <div class="workspace-card-large">
-
-            <div class="panel-heading">
-              <div>
-                <h3>Opportunity discovery</h3>
-                <p class="muted-text">Find real opportunities, not invented job listings.</p>
-              </div>
-            </div>
-
-            <button
-              class="primary-button"
-              id="scanOpportunitiesButton"
-              type="button"
-            >Find opportunities</button>
-
-            <div class="jobs-list" id="autopilotOpportunities"></div>
-
-          </div>
-
-          <div class="workspace-card-large">
-            <div class="panel-heading">
-              <h3>My tasks</h3>
-            </div>
-
-            <div class="jobs-list" id="autopilotTasks">
-              <div class="empty-state compact-empty">
-                <span>✓</span>
-                <h3>No tasks yet</h3>
-                <p>Your organised tasks will appear here.</p>
-              </div>
-            </div>
-          </div>
-
-        </section>
-
-        <!-- MEMORY -->
-        <section
-          class="page-section"
-          id="page-memory"
-          data-page-section="memory"
-        >
-
-          <div class="section-header">
-            <div class="page-eyebrow">PERSONAL CONTEXT</div>
-            <h1>Memory</h1>
-            <p>Manage information Joseph AI can use to help with your work.</p>
-          </div>
-
-          <div class="workspace-card-large">
-            <div class="panel-heading">
-              <h3>Memory settings</h3>
-              <span class="status-label" id="memoryStatus">Local memory</span>
-            </div>
-
-            <label class="toggle-label">
-              <input type="checkbox" id="memoryEnabled" checked>
-              Enable memory
-            </label>
-
-            <form class="tool-form" id="memoryForm">
-              <label for="memoryInput">Add information to memory</label>
-              <textarea
-                id="memoryInput"
-                placeholder="Write information you want Joseph AI to use..."
-              ></textarea>
-
-              <button class="primary-button" id="saveMemoryButton" type="submit">
-                Save memory
-              </button>
-            </form>
-          </div>
-
-          <div class="workspace-card-large">
-            <div class="panel-heading">
-              <h3>Saved information</h3>
-            </div>
-            <div class="memory-list" id="memoryList"></div>
-          </div>
-
-        </section>
-
-        <!-- SETTINGS -->
-        <section
-          class="page-section"
-          id="page-settings"
-          data-page-section="settings"
-        >
-
-          <div class="section-header">
-            <div class="page-eyebrow">PREFERENCES</div>
-            <h1>Settings</h1>
-            <p>Control the appearance and behaviour of Joseph AI.</p>
-          </div>
-
-          <div class="settings-layout">
-
-            <div class="workspace-card-large">
-              <h3>Appearance</h3>
-
-              <div class="settings-row">
-                <div>
-                  <strong>Theme</strong>
-                  <p>Choose your preferred appearance.</p>
                 </div>
 
+              </div>
+
+            </div>
+
+            <!-- TYPING INDICATOR -->
+            <div class="typing-indicator" id="typingIndicator" hidden>
+              <span></span>
+              <span></span>
+              <span></span>
+            </div>
+
+          </div>
+
+          <!-- COMPOSER -->
+          <div class="composer-area">
+
+            <div class="attachment-preview" id="attachmentPreview" hidden>
+              <div id="attachmentList"></div>
+
+              <button
+                id="clearAttachmentsButton"
+                type="button"
+                class="icon-button"
+                aria-label="Remove attachments"
+              >×</button>
+            </div>
+
+            <form class="chat-composer" id="brainForm">
+
+              <textarea
+                id="brainInput"
+                rows="1"
+                placeholder="Message Joseph AI..."
+                aria-label="Message Joseph AI"
+              ></textarea>
+
+              <div class="composer-toolbar">
+
+                <div class="composer-tools">
+
+                  <button
+                    class="composer-tool"
+                    id="attachFileButton"
+                    type="button"
+                    title="Attach files"
+                  >
+                    <span>＋</span>
+                    <span class="tool-label">Attach</span>
+                  </button>
+
+                  <input
+                    id="brainFileInput"
+                    type="file"
+                    hidden
+                    multiple
+                  >
+
+                  <button
+                    class="composer-tool"
+                    id="brainImageButton"
+                    type="button"
+                    title="Add an image"
+                  >
+                    <span>▧</span>
+                    <span class="tool-label">Image</span>
+                  </button>
+
+                  <input
+                    id="brainImageInput"
+                    type="file"
+                    accept="image/*"
+                    hidden
+                    multiple
+                  >
+
+                  <button
+                    class="composer-tool"
+                    id="brainVoiceButton"
+                    type="button"
+                    title="Voice input"
+                  >
+                    <span>♩</span>
+                    <span class="tool-label">Voice</span>
+                  </button>
+
+                </div>
+
+                <div class="composer-actions">
+
+                  <button
+                    class="icon-button stop-speaking-button"
+                    id="stopSpeakingButton"
+                    type="button"
+                    title="Stop"
+                    hidden
+                  >■</button>
+
+                  <button
+                    class="send-button"
+                    id="sendBrainButton"
+                    type="submit"
+                    aria-label="Send message"
+                  >↑</button>
+
+                </div>
+
+              </div>
+
+            </form>
+
+            <p class="composer-disclaimer">
+              Joseph AI can make mistakes. Check important information.
+            </p>
+
+          </div>
+
+        </div>
+
+      </section>
+
+      <!-- PROJECTS PAGE -->
+      <section class="page-section secondary-page" id="page-projects" data-page-section="projects">
+        <div class="secondary-page-content">
+          <div class="page-heading">
+            <span class="page-heading-icon">▣</span>
+            <div>
+              <h1>Your projects</h1>
+              <p>Your websites, applications, games and other work.</p>
+            </div>
+          </div>
+
+          <div id="allProjectsList" class="projects-grid">
+            <div class="empty-state">
+              <span>▣</span>
+              <h3>No projects yet</h3>
+              <p>Ask Joseph AI to help you create your first project.</p>
+            </div>
+          </div>
+        </div>
+      </section>
+
+      <!-- AUTOPILOT PAGE -->
+      <section class="page-section secondary-page" id="page-autopilot" data-page-section="autopilot">
+        <div class="secondary-page-content">
+          <div class="page-heading">
+            <span class="page-heading-icon">✧</span>
+            <div>
+              <h1>Autopilot</h1>
+              <p>Discover opportunities and organize work with Joseph AI.</p>
+            </div>
+          </div>
+
+          <div class="autopilot-intro">
+            <h2>Your opportunity assistant</h2>
+            <p>
+              Find real work opportunities, review tasks and decide what
+              Joseph AI should help you prepare.
+            </p>
+
+            <button id="scanOpportunitiesButton" class="primary-action-button" type="button">
+              <span>✧</span> Find opportunities
+            </button>
+          </div>
+
+          <div class="autopilot-stats">
+            <div class="stat-card">
+              <span>Opportunities</span>
+              <strong id="autopilotOpportunityCount">0</strong>
+            </div>
+
+            <div class="stat-card">
+              <span>Tasks</span>
+              <strong id="autopilotTaskCount">0</strong>
+            </div>
+
+            <div class="stat-card">
+              <span>Completed</span>
+              <strong id="autopilotCompletedCount">0</strong>
+            </div>
+          </div>
+
+          <div class="autopilot-columns">
+            <div class="workspace-card">
+              <h3>Opportunities</h3>
+              <div id="autopilotOpportunities">
+                <p class="muted-text">Your discovered opportunities will appear here.</p>
+              </div>
+            </div>
+
+            <div class="workspace-card">
+              <h3>Your tasks</h3>
+              <div id="autopilotTasks">
+                <p class="muted-text">Your work tasks will appear here.</p>
+              </div>
+            </div>
+          </div>
+        </div>
+      </section>
+
+      <!-- MEMORY PAGE -->
+      <section class="page-section secondary-page" id="page-memory" data-page-section="memory">
+        <div class="secondary-page-content">
+          <div class="page-heading">
+            <span class="page-heading-icon">◈</span>
+            <div>
+              <h1>Memory</h1>
+              <p>Information Joseph AI can use to support your work.</p>
+            </div>
+          </div>
+
+          <div class="workspace-card">
+            <div class="memory-status-row">
+              <div>
+                <h3>Assistant memory</h3>
+                <p class="muted-text">Manage information saved in this workspace.</p>
+              </div>
+              <label class="switch-label">
+                <input id="memoryEnabled" type="checkbox" checked>
+                <span>Enabled</span>
+              </label>
+            </div>
+
+            <form id="memoryForm" class="memory-form">
+              <textarea id="memoryInput" rows="3" placeholder="What should Joseph AI remember?"></textarea>
+              <button id="saveMemoryButton" class="primary-action-button" type="submit">Save memory</button>
+            </form>
+
+            <div id="memoryStatus" class="feedback-message"></div>
+            <div id="memoryList" class="memory-list"></div>
+          </div>
+        </div>
+      </section>
+
+      <!-- SETTINGS PAGE -->
+      <section class="page-section secondary-page" id="page-settings" data-page-section="settings">
+        <div class="secondary-page-content">
+          <div class="page-heading">
+            <span class="page-heading-icon">⚙</span>
+            <div>
+              <h1>Settings</h1>
+              <p>Configure your Joseph AI workspace.</p>
+            </div>
+          </div>
+
+          <div class="settings-list">
+
+            <div class="settings-group">
+              <h3>Appearance</h3>
+
+              <label class="setting-row">
+                <span>
+                  <strong>Theme</strong>
+                  <small>Choose how Joseph AI looks.</small>
+                </span>
                 <select id="appearanceSetting">
                   <option value="dark">Dark</option>
                   <option value="light">Light</option>
                   <option value="system">System</option>
                 </select>
-              </div>
+              </label>
 
-              <div class="settings-row">
-                <div>
+              <label class="setting-row">
+                <span>
                   <strong>Compact mode</strong>
-                  <p>Use a more compact layout.</p>
-                </div>
-                <input type="checkbox" id="compactModeSetting">
-              </div>
+                  <small>Use a more compact layout.</small>
+                </span>
+                <input id="compactModeSetting" type="checkbox">
+              </label>
             </div>
 
-            <div class="workspace-card-large">
-              <h3>AI preferences</h3>
+            <div class="settings-group">
+              <h3>Assistant</h3>
 
-              <div class="settings-row">
-                <div>
+              <label class="setting-row">
+                <span>
                   <strong>Default model</strong>
-                  <p>Choose the preferred AI model.</p>
-                </div>
-
+                  <small>Choose the default AI model when supported.</small>
+                </span>
                 <select id="defaultModelSetting">
                   <option value="auto">Automatic</option>
+                  <option value="gemini">Gemini</option>
                 </select>
-              </div>
+              </label>
 
-              <div class="settings-row">
-                <div>
-                  <strong>Internet research</strong>
-                  <p>Allow online research when available.</p>
-                </div>
-                <input type="checkbox" id="webSearchSetting" checked>
-              </div>
+              <label class="setting-row">
+                <span>
+                  <strong>Web search</strong>
+                  <small>Allow online research when available.</small>
+                </span>
+                <input id="webSearchSetting" type="checkbox" checked>
+              </label>
 
-              <div class="settings-row">
-                <div>
+              <label class="setting-row">
+                <span>
                   <strong>Speak responses</strong>
-                  <p>Read responses aloud when enabled.</p>
-                </div>
-                <input type="checkbox" id="speakResponsesSetting">
-              </div>
+                  <small>Read assistant responses aloud.</small>
+                </span>
+                <input id="speakResponsesSetting" type="checkbox">
+              </label>
 
-              <div class="settings-row">
-                <div>
+              <label class="setting-row">
+                <span>
                   <strong>Voice language</strong>
-                  <p>Choose your speech language.</p>
-                </div>
-
+                  <small>Choose your speech recognition language.</small>
+                </span>
                 <select id="voiceLanguageSetting">
                   <option value="en-US">English (US)</option>
                   <option value="en-GB">English (UK)</option>
+                  <option value="en-NG">English (Nigeria)</option>
                 </select>
-              </div>
+              </label>
             </div>
 
-            <div class="workspace-card-large">
-              <h3>Data and privacy</h3>
+            <div class="settings-group">
+              <h3>Data</h3>
 
-              <button class="secondary-button" id="exportDataButton" type="button">
+              <button id="exportDataButton" class="settings-action" type="button">
                 Export my data
               </button>
 
-              <button class="danger-button" id="clearLocalDataButton" type="button">
-                Clear local data
+              <button id="clearHistoryButton" class="settings-action danger-action" type="button">
+                Clear conversation history
+              </button>
+
+              <button id="clearLocalDataButton" class="settings-action danger-action" type="button">
+                Clear local workspace data
               </button>
             </div>
 
-            <div class="workspace-card-large">
-              <h3>Connected services</h3>
-              <div class="integration-list" id="integrationList">
-                <div class="integration-row">
-                  <div>
-                    <strong>AI services</strong>
-                    <p>Provider availability will be shown here.</p>
-                  </div>
-                  <span class="status-label">Check connection</span>
-                </div>
+            <div class="settings-group">
+              <h3>Connections</h3>
+              <div id="integrationList">
+                <p class="muted-text">Connected services will be shown here when configured.</p>
               </div>
             </div>
 
           </div>
+        </div>
+      </section>
 
-        </section>
-
-      </div>
     </main>
   </div>
 
   <!-- TOAST NOTIFICATIONS -->
-  <div
-    class="toast-container"
-    id="toastContainer"
-    aria-live="polite"
-  ></div>
+  <div class="toast-container" id="toastContainer" aria-live="polite"></div>
 
   <!-- LOADING OVERLAY -->
   <div class="loading-overlay" id="loadingOverlay" hidden>
     <div class="loading-card">
       <div class="loading-spinner"></div>
-      <strong id="loadingTitle">Joseph AI is working</strong>
+      <h3 id="loadingTitle">Joseph AI is working</h3>
       <p id="loadingDescription">Please wait...</p>
     </div>
   </div>
 
+  <script src="script.js" defer></script>
 </body>
-</html>
+        </html>
+        
