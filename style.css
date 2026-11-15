@@ -1725,6 +1725,564 @@ img {
   min-height: 115px;
 }
 
+
 /* =========================
    20. TOASTS
-===================
+========================= */
+
+.toast-container {
+  position: fixed;
+  z-index: 500;
+
+  right: max(14px,env(safe-area-inset-right));
+  bottom: max(14px,env(safe-area-inset-bottom));
+
+  display: flex;
+  flex-direction: column;
+  gap: 9px;
+}
+
+.toast {
+  max-width: min(350px,calc(100vw - 28px));
+
+  padding: 12px 15px;
+
+  border: 1px solid var(--border-strong);
+  border-radius: 11px;
+
+  background: #242631;
+  color: var(--text);
+
+  box-shadow: var(--shadow);
+
+  font-size: 11px;
+  animation: pageAppear .2s ease;
+}
+
+.toast.success {
+  border-color: rgba(72,214,160,.3);
+}
+
+.toast.error {
+  border-color: rgba(255,115,125,.35);
+}
+
+/* =========================
+   21. LOADING OVERLAY
+========================= */
+
+.loading-overlay {
+  position: fixed;
+  z-index: 600;
+  inset: 0;
+
+  display: grid;
+  place-items: center;
+
+  padding: 20px;
+
+  background: rgba(5,6,10,.72);
+
+  backdrop-filter: blur(7px);
+  -webkit-backdrop-filter: blur(7px);
+}
+
+.loading-card {
+  width: min(310px,100%);
+
+  padding: 27px;
+
+  border: 1px solid var(--border-strong);
+  border-radius: 17px;
+
+  background: var(--surface);
+
+  text-align: center;
+
+  box-shadow: var(--shadow);
+}
+
+.loading-spinner {
+  width: 34px;
+  height: 34px;
+
+  margin: 0 auto 15px;
+
+  border: 3px solid var(--surface-3);
+  border-top-color: var(--accent);
+
+  border-radius: 50%;
+
+  animation: spin .8s linear infinite;
+}
+
+@keyframes spin {
+  to {
+    transform: rotate(360deg);
+  }
+}
+
+.loading-card strong {
+  font-size: 12px;
+}
+
+.loading-card p {
+  margin-top: 5px;
+  color: var(--muted);
+  font-size: 10px;
+}
+
+/* =========================
+   22. SIDEBAR OVERLAY
+========================= */
+
+.sidebar-overlay {
+  display: none;
+}
+
+/* =========================
+   23. LIGHT THEME
+========================= */
+
+body.light-theme {
+  color-scheme: light;
+
+  --bg: #f4f5f8;
+  --sidebar: #ffffff;
+  --surface: #ffffff;
+  --surface-2: #f0f1f6;
+  --surface-3: #e8eaf0;
+
+  --border: rgba(20,25,40,.09);
+  --border-strong: rgba(20,25,40,.15);
+
+  --text: #1c1e29;
+  --text-secondary: #51596a;
+  --muted: #7c8291;
+
+  background: var(--bg);
+  color: var(--text);
+}
+
+body.light-theme .topbar {
+  background: rgba(255,255,255,.94);
+}
+
+body.light-theme .chat-composer,
+body.light-theme .tool-form input:not([type="checkbox"]),
+body.light-theme .tool-form textarea,
+body.light-theme .tool-form select,
+body.light-theme .settings-row select {
+  background: #f7f8fb;
+  color: var(--text);
+}
+
+body.light-theme .sidebar-search {
+  background: #f7f8fb;
+}
+
+body.light-theme .toast {
+  background: #ffffff;
+  color: var(--text);
+}
+
+body.light-theme .message-content pre {
+  background: #eceef4;
+  color: #242631;
+}
+
+/* =========================
+   24. COMPACT MODE
+========================= */
+
+body.compact-mode .page-container {
+  padding: 18px 24px;
+}
+
+body.compact-mode .workspace-card-large {
+  padding: 14px;
+}
+
+body.compact-mode .nav-item {
+  min-height: 35px;
+}
+
+
+/* =========================
+   25. TABLET
+========================= */
+
+@media (max-width: 1050px) {
+  .page-container {
+    padding: 22px;
+  }
+
+  .project-grid {
+    grid-template-columns: repeat(2,minmax(0,1fr));
+  }
+
+  .settings-layout {
+    grid-template-columns: minmax(0,1fr);
+  }
+}
+
+/* =========================
+   26. MOBILE
+========================= */
+
+@media (max-width: 760px) {
+
+  :root {
+    --topbar-height: 56px;
+  }
+
+  .app-shell {
+    display: block;
+    overflow-x: hidden;
+  }
+
+  .sidebar {
+    width: min(290px,86vw);
+    max-width: 100%;
+
+    transform: translateX(-105%);
+
+    padding-top: max(13px,env(safe-area-inset-top));
+    padding-bottom: max(12px,env(safe-area-inset-bottom));
+
+    box-shadow: 15px 0 40px rgba(0,0,0,.38);
+  }
+
+  .sidebar.open {
+    transform: translateX(0);
+  }
+
+  .sidebar-close {
+    display: inline-grid !important;
+  }
+
+  .sidebar-overlay.visible {
+    position: fixed;
+    z-index: 90;
+    inset: 0;
+
+    display: block;
+
+    background: rgba(0,0,0,.62);
+
+    backdrop-filter: blur(2px);
+    -webkit-backdrop-filter: blur(2px);
+  }
+
+  .main-area {
+    width: 100%;
+    min-width: 0;
+    min-height: 100vh;
+    min-height: 100dvh;
+
+    margin-left: 0;
+  }
+
+  .menu-toggle,
+  .back-button {
+    display: inline-grid;
+  }
+
+  .topbar {
+    min-height: var(--topbar-height);
+
+    padding: 0 10px;
+    padding-top: env(safe-area-inset-top,0px);
+
+    gap: 5px;
+  }
+
+  .topbar-left,
+  .topbar-right {
+    gap: 5px;
+  }
+
+  .breadcrumb {
+    gap: 6px;
+    font-size: 10px;
+  }
+
+  .connection-status {
+    gap: 5px;
+    font-size: 8px;
+  }
+
+  .topbar .icon-button {
+    width: 34px;
+    height: 34px;
+  }
+
+  #profileButton {
+    width: 31px;
+    height: 31px;
+  }
+
+  .page-container {
+    width: 100%;
+    padding: 15px 12px 22px;
+  }
+
+  .brain-layout {
+    min-height: calc(100dvh - 75px);
+  }
+
+  .chat-topline {
+    gap: 8px;
+    margin-bottom: 10px;
+  }
+
+  .chat-topline h1 {
+    font-size: 20px;
+  }
+
+  .chat-messages {
+    gap: 17px;
+    padding: 5px 1px 18px;
+  }
+
+  .welcome-screen {
+    padding: 18px 0;
+  }
+
+  .welcome-symbol {
+    width: 55px;
+    height: 55px;
+
+    margin-bottom: 14px;
+
+    border-radius: 18px;
+    font-size: 27px;
+  }
+
+  .welcome-screen h2 {
+    font-size: 22px;
+  }
+
+  .welcome-screen > p {
+    margin: 8px auto 18px;
+    font-size: 11px;
+  }
+
+  .suggestion-grid {
+    gap: 8px;
+  }
+
+  .suggestion-card {
+    min-height: 89px;
+    padding: 10px;
+  }
+
+  .suggestion-card strong {
+    font-size: 10px;
+  }
+
+  .suggestion-card small {
+    font-size: 9px;
+  }
+
+  .composer-area {
+    padding-top: 7px;
+    padding-bottom: max(5px,env(safe-area-inset-bottom));
+  }
+
+  .chat-composer {
+    padding: 9px 9px 7px;
+    border-radius: 15px;
+  }
+
+  .chat-composer textarea {
+    min-height: 38px;
+    max-height: 120px;
+    font-size: 13px;
+  }
+
+  .composer-tools {
+    gap: 2px;
+  }
+
+  .composer-tool {
+    min-height: 32px;
+    padding: 0 6px;
+    font-size: 10px;
+  }
+
+  .composer-actions {
+    gap: 5px;
+  }
+
+  .send-button {
+    width: 35px;
+    height: 35px;
+  }
+
+  .composer-disclaimer {
+    font-size: 8px;
+  }
+
+  .message-body {
+    max-width: 91%;
+  }
+
+  .section-header {
+    margin-bottom: 18px;
+  }
+
+  .section-header h1 {
+    font-size: 25px;
+  }
+
+  .section-header p {
+    font-size: 11px;
+  }
+
+  .workspace-card-large {
+    padding: 14px;
+    margin-bottom: 13px;
+  }
+
+  .dashboard-grid {
+    gap: 7px;
+  }
+
+  .stat-card {
+    padding: 11px 8px;
+  }
+
+  .stat-card strong {
+    font-size: 19px;
+  }
+
+  .stat-card > span:last-child {
+    font-size: 8px;
+  }
+
+  .project-grid {
+    grid-template-columns: repeat(2,minmax(0,1fr));
+  }
+
+  .settings-layout {
+    grid-template-columns: minmax(0,1fr);
+  }
+
+  .autopilot-banner {
+    align-items: flex-start;
+    gap: 11px;
+  }
+
+  .autopilot-symbol {
+    width: 45px;
+    height: 45px;
+    font-size: 23px;
+  }
+
+  .autopilot-banner h2 {
+    font-size: 15px;
+  }
+
+  .settings-row {
+    align-items: flex-start;
+  }
+
+  .settings-row select {
+    min-width: 105px;
+    max-width: 135px;
+  }
+
+  .toast-container {
+    right: 10px;
+    bottom: max(10px,env(safe-area-inset-bottom));
+  }
+}
+
+/* =========================
+   27. VERY SMALL PHONES
+========================= */
+
+@media (max-width: 390px) {
+
+  .page-container {
+    padding-right: 9px;
+    padding-left: 9px;
+  }
+
+  .topbar {
+    padding-right: 7px;
+    padding-left: 7px;
+  }
+
+  .topbar-left,
+  .topbar-right {
+    gap: 3px;
+  }
+
+  .breadcrumb {
+    font-size: 9px;
+  }
+
+  .breadcrumb-brand {
+    display: none;
+  }
+
+  .connection-status {
+    font-size: 8px;
+  }
+
+  .suggestion-grid {
+    grid-template-columns: minmax(0,1fr);
+  }
+
+  .suggestion-card {
+    min-height: 73px;
+  }
+
+  .project-grid {
+    grid-template-columns: minmax(0,1fr);
+  }
+
+  .dashboard-grid {
+    grid-template-columns: minmax(0,1fr);
+  }
+
+  .stat-card {
+    flex-direction: row;
+    align-items: center;
+    gap: 12px;
+  }
+
+  .stat-card strong {
+    margin: 0;
+  }
+
+  .stat-card > span:last-child {
+    margin-left: auto;
+  }
+
+  .message-body {
+    max-width: 93%;
+  }
+
+  .composer-tool span:last-child {
+    display: none;
+  }
+}
+
+/* =========================
+   28. ACCESSIBILITY
+========================= */
+
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    scroll-behavior: auto !important;
+    animation-duration: .01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: .01ms !important;
+  }
+}
+
