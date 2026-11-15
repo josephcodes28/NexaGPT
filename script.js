@@ -982,12 +982,24 @@ const JosephAI = (() => {
   }
 
   function stopSpeaking() {
-    if ("speechSynthesis" in window) {
-      window.speechSynthesis.cancel();
-    }
+  // Stop all speech immediately.
+  if ("speechSynthesis" in window) {
+    window.speechSynthesis.cancel();
+    window.speechSynthesis.pause();
+  }
 
-    const button = byId("stopSpeakingButton");
-    if (button) button.hidden = true;
+  // Stop microphone recognition.
+  stopVoiceRecognition();
+
+  // Hide the Stop button.
+  const button = byId("stopSpeakingButton");
+
+  if (button) {
+    button.hidden = true;
+  }
+
+  // Prevent any pending speech from continuing.
+  state.speechStopped = true;
   }
 
   /* =======================================================
