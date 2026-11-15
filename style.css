@@ -561,3 +561,89 @@ body.compact-mode .nav-item { min-height: 36px; }
     transition-duration: .01ms !important;
   }
 }
+/* =========================================
+   JOSEPH AI V2 — ANDROID SCREEN FIX
+========================================= */
+
+* {
+  box-sizing: border-box;
+}
+
+html,
+body {
+  width: 100%;
+  min-width: 0;
+  min-height: 100%;
+  margin: 0;
+  overflow-x: hidden;
+}
+
+body {
+  -webkit-text-size-adjust: 100%;
+}
+
+#appShell {
+  width: 100%;
+  max-width: 100%;
+  min-width: 0;
+  min-height: 100dvh;
+  overflow-x: hidden;
+}
+
+.main-area {
+  width: 100%;
+  min-width: 0;
+  max-width: 100%;
+}
+
+@media (max-width: 600px) {
+  .main-area {
+    margin-left: 0 !important;
+    width: 100% !important;
+    min-width: 0;
+  }
+
+  .topbar {
+    width: 100%;
+    min-height: 56px;
+    padding: 8px 12px;
+  }
+
+  .page,
+  [data-page-section] {
+    width: 100%;
+    min-width: 0;
+    max-width: 100%;
+    padding: 12px;
+  }
+
+  .brain-layout {
+    width: 100%;
+    min-width: 0;
+    min-height: 0;
+  }
+
+  .chat-messages {
+    min-width: 0;
+    overflow-y: auto;
+    -webkit-overflow-scrolling: touch;
+  }
+
+  .composer-area {
+    width: 100%;
+    max-width: 100%;
+  }
+
+  input,
+  textarea,
+  select,
+  button {
+    max-width: 100%;
+  }
+
+  .dashboard-grid,
+  .stats-grid,
+  .projects-grid {
+    grid-template-columns: minmax(0, 1fr) !important;
+  }
+}
