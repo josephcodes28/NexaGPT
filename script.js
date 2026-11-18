@@ -3,8 +3,8 @@
 
 /* =========================================================
    JOSEPH AI V2
-   CENTRAL CHAT INTERFACE
-   Mobile-first | Conversation history | Local workspace
+   CENTRAL CHAT CONTROLLER
+   Mobile navigation | Browser history | Gemini connection
 ========================================================= */
 
 (() => {
@@ -25,7 +25,9 @@
 
     maxAttachmentSize: 8 * 1024 * 1024,
     maxAttachments: 5,
-    requestTimeout: 90000
+    requestTimeout: 90000,
+    swipeThreshold: 80,
+    edgeWidth: 30
   };
 
   const $ = (selector, root = document) =>
@@ -42,12 +44,18 @@
     memory: [],
     projects: [],
     applications: [],
+
     isSending: false,
     recognition: null,
     listening: false,
     abortController: null,
+
+    currentPage: "brain",
+    sidebarOpen: false,
+
     touchStartX: 0,
-    touchStartY: 0
+    touchStartY: 0,
+    touchStartedInSidebar: false
   };
 
   const defaultSettings = {
@@ -56,7 +64,8 @@
     model: "auto",
     webSearch: true,
     speakResponses: false,
-    voiceLanguage: "en-US"
+    voiceLanguage: "en-US",
+    memoryEnabled: true
   };
 
   /* =====================================================
@@ -78,8 +87,8 @@
       localStorage.setItem(key, JSON.stringify(value));
       return true;
     } catch (error) {
+      console.error("Storage write error:", error);
       showToast("Unable to save. Your phone storage may be full.");
-      console.error(error);
       return false;
     }
   }
@@ -113,13 +122,12 @@
 
     if (!Array.isArray(state.memory)) state.memory = [];
     if (!Array.isArray(state.projects)) state.projects = [];
+
     if (!Array.isArray(state.applications)) {
       state.applications = [];
     }
 
-    let active = getActiveConversation();
-
-    if (!active) {
+    if (!getActiveConversation()) {
       createConversation(false);
     }
   }
@@ -181,24 +189,24 @@
     }
   }
 
-  function setLoading(active, title, description) {
-    const overlay = $("#loadingOverlay");
-
-    if (!overlay) return;
-
-    overlay.hidden = !active;
-
-    if (title) $("#loadingTitle").textContent = title;
-    if (description) {
-      $("#loadingDescription").textContent = description;
-    }
-  }
-
   function makeId() {
     return (
       Date.now().toString(36) +
       Math.random().toString(36).slice(2, 9)
     );
+  }
+
+  function setLoading(active, title, description) {
+    const overlay = $("#loadingOverlay");
+    if (!overlay) return;
+
+    overlay.hidden = !active;
+
+    if (title) $("#loadingTitle").textContent = title;
+
+    if (description) {
+      $("#loadingDescription").textContent = description;
+    }
   }
 
   async function requestJSON(url, options = {}) {
@@ -214,8 +222,10 @@
         ...options,
         signal: controller.signal,
         headers: {
-          "Content-Type": "application/json",
-          ...(options.headers || {})
+          ...(options.headers || {}),
+          ...(options.body ? {
+            "Content-Type": "application/json"
+          } : {})
         }
       });
 
@@ -230,6 +240,7 @@
       }
 
       return data;
+
     } finally {
       clearTimeout(timeout);
     }
@@ -293,12 +304,12 @@
     if (!conversation) return;
 
     state.activeConversationId = id;
-    saveConversations();
 
+    saveConversations();
     renderMessages();
     renderConversationHistory();
+
     showPage("brain");
-    closeSidebar();
   }
 
   function renameConversation(id) {
@@ -323,11 +334,9 @@
   }
 
   function deleteConversation(id) {
-    const confirmed = confirm(
+    if (!confirm(
       "Delete this conversation? This cannot be undone."
-    );
-
-    if (!confirmed) return;
+    )) return;
 
     state.conversations = state.conversations.filter(
       item => item.id !== id
@@ -360,15 +369,11 @@
     showToast("Conversation history cleared.");
   }
 
-  function updateConversationTitle(conversation, firstMessage) {
-    if (
-      conversation.title === "New chat" &&
-      firstMessage
-    ) {
-      conversation.title =
-        firstMessage.trim().slice(0, 42) ||
-        "New conversation";
-    }
+  function updateConversationTitle(conversation, message) {
+    if (conversation.title !== "New chat" || !message) return;
+
+    conversation.title =
+      message.trim().slice(0, 42) || "New conversation";
   }
 
   /* =====================================================
@@ -476,14 +481,19 @@
       container.innerHTML = `
         <div class="brain-welcome" id="brainWelcome">
           <div class="welcome-logo"><span>J</span></div>
+
           <h1>How can I help you today?</h1>
+
           <p>
             I'm Joseph AI, your intelligent assistant and digital
             work partner. Tell me what you want to do.
           </p>
 
           <div class="welcome-capabilities">
-            <button class="prompt-card" data-prompt="Research something on the internet and explain the findings." type="button">
+
+            <button class="prompt-card"
+              data-prompt="Research something on the internet and explain the findings."
+              type="button">
               <span class="prompt-icon">⌕</span>
               <span>
                 <strong>Research anything</strong>
@@ -491,7 +501,9 @@
               </span>
             </button>
 
-            <button class="prompt-card" data-prompt="Help me create a professional website for a business." type="button">
+            <button class="prompt-card"
+              data-prompt="Help me create a professional website for a business."
+              type="button">
               <span class="prompt-icon">⌘</span>
               <span>
                 <strong>Build a website</strong>
@@ -499,7 +511,9 @@
               </span>
             </button>
 
-            <button class="prompt-card" data-prompt="Find legitimate remote jobs that accept applicants from Nigeria. Show real listings and their links." type="button">
+            <button class="prompt-card"
+              data-prompt="Find legitimate remote jobs that accept applicants from Nigeria. Show real listings and their links."
+              type="button">
               <span class="prompt-icon">↗</span>
               <span>
                 <strong>Find online work</strong>
@@ -507,16 +521,20 @@
               </span>
             </button>
 
-            <button class="prompt-card" data-prompt="Help me create content for social media." type="button">
+            <button class="prompt-card"
+              data-prompt="Help me create content for social media."
+              type="button">
               <span class="prompt-icon">✧</span>
               <span>
                 <strong>Create content</strong>
                 <small>Write, plan and develop content</small>
               </span>
             </button>
+
           </div>
         </div>
       `;
+
       return;
     }
 
@@ -525,36 +543,39 @@
 
       return `
         <article class="message-row ${isUser ? "user" : "assistant"}">
+
           <div class="message-avatar">
             ${isUser ? "Y" : "J"}
           </div>
 
           <div class="message-content">
+
             <div class="message-author">
               ${isUser ? "You" : "Joseph AI"}
             </div>
 
-            <div class="message-text">${escapeHTML(
-              message.content
-            ).replace(/\n/g, "<br>")}</div>
+            <div class="message-text">${
+              escapeHTML(message.content).replace(/\n/g, "<br>")
+            }</div>
 
             ${!isUser ? `
               <div class="message-actions">
                 <button type="button" data-copy-message="${index}">
                   Copy
                 </button>
+
                 <button type="button" data-speak-message="${index}">
                   Read aloud
                 </button>
               </div>
             ` : ""}
+
           </div>
         </article>
       `;
     }).join("");
 
     container.scrollTop = container.scrollHeight;
-    setupMessageActions();
   }
 
   function setupMessageActions() {
@@ -574,13 +595,13 @@
             Number(copyButton.dataset.copyMessage)
           ];
 
-        if (message) {
-          try {
-            await navigator.clipboard.writeText(message.content);
-            showToast("Message copied.");
-          } catch {
-            showToast("Could not copy this message.");
-          }
+        if (!message) return;
+
+        try {
+          await navigator.clipboard.writeText(message.content);
+          showToast("Message copied.");
+        } catch {
+          showToast("Could not copy this message.");
         }
       }
 
@@ -608,7 +629,7 @@
 
     conversation.updatedAt = new Date().toISOString();
 
-    if (role === "user" && conversation.title === "New chat") {
+    if (role === "user") {
       updateConversationTitle(conversation, content);
     }
 
@@ -631,6 +652,7 @@
       const reader = new FileReader();
 
       reader.onload = () => resolve(reader.result);
+
       reader.onerror = () => reject(
         new Error("Could not read the selected file.")
       );
@@ -648,6 +670,13 @@
         break;
       }
 
+      if (!file.type.startsWith("image/")) {
+        showToast(
+          "Image attachments are supported by the current Brain connection. Other file types are not connected yet."
+        );
+        continue;
+      }
+
       if (file.size > CONFIG.maxAttachmentSize) {
         showToast(`${file.name} is larger than 8 MB.`);
         continue;
@@ -662,6 +691,7 @@
           size: file.size,
           data
         });
+
       } catch (error) {
         showToast(error.message);
       }
@@ -681,7 +711,12 @@
     list.innerHTML = state.attachments.map((file, index) => `
       <div class="attachment-item">
         <span>${escapeHTML(file.name)}</span>
-        <button type="button" data-remove-attachment="${index}">×</button>
+
+        <button
+          type="button"
+          data-remove-attachment="${index}"
+          aria-label="Remove attachment"
+        >×</button>
       </div>
     `).join("");
   }
@@ -730,21 +765,29 @@
   async function sendMessage(text) {
     const message = String(text || "").trim();
 
-    if ((!message && !state.attachments.length) || state.isSending) {
+    if (
+      (!message && !state.attachments.length) ||
+      state.isSending
+    ) {
       return;
     }
 
-    const conversation = getActiveConversation();
-    if (!conversation) return;
+    if (!getActiveConversation()) {
+      createConversation(false);
+    }
 
     const attachments = [...state.attachments];
 
     state.attachments = [];
     renderAttachments();
 
-    addMessage("user", message || "Please examine my attachment.");
+    addMessage(
+      "user",
+      message || "Please examine my image attachment."
+    );
 
     const input = $("#brainInput");
+
     if (input) {
       input.value = "";
       input.style.height = "auto";
@@ -754,10 +797,15 @@
     state.abortController = new AbortController();
 
     const sendButton = $("#sendBrainButton");
+
     if (sendButton) sendButton.disabled = true;
 
     setTyping(true);
     setConnection("Thinking...", "busy");
+
+    const timeout = setTimeout(() => {
+      state.abortController?.abort();
+    }, CONFIG.requestTimeout);
 
     try {
       const active = getActiveConversation();
@@ -770,25 +818,33 @@
         }));
 
       const payload = {
-        message,
+        message:
+          message || "Please examine my image attachment.",
+
         history,
+
         attachments: attachments.map(file => ({
           name: file.name,
           type: file.type,
           data: file.data
         })),
+
         settings: {
           model: state.settings.model,
           webSearch: state.settings.webSearch
         }
       };
 
+      // Send the actual request to the Joseph AI Brain.
       const response = await fetch(CONFIG.api.chat, {
         method: "POST",
+
         headers: {
           "Content-Type": "application/json"
         },
+
         body: JSON.stringify(payload),
+
         signal: state.abortController.signal
       });
 
@@ -799,6 +855,12 @@
           data.error ||
           data.message ||
           `Server error: ${response.status}`
+        );
+      }
+
+      if (data.success === false) {
+        throw new Error(
+          data.error || "The AI could not complete the request."
         );
       }
 
@@ -814,8 +876,13 @@
 
     } catch (error) {
       if (error.name === "AbortError") {
-        addMessage("assistant", "The request was stopped.");
+        addMessage(
+          "assistant",
+          "The request was stopped or took too long. You can try again."
+        );
+
         setConnection("Stopped", "ready");
+
       } else {
         console.error("Joseph AI chat error:", error);
 
@@ -828,6 +895,8 @@
       }
 
     } finally {
+      clearTimeout(timeout);
+
       state.isSending = false;
       state.abortController = null;
 
@@ -844,17 +913,9 @@
 
     stopSpeaking();
     stopVoiceRecognition();
-    setTyping(false);
-
-    state.isSending = false;
-
-    const button = $("#sendBrainButton");
-    if (button) button.disabled = false;
-
-    setConnection("Stopped", "ready");
   }
 
-   /* =====================================================
+  /* =====================================================
      VOICE
   ===================================================== */
 
@@ -875,11 +936,13 @@
 
     const recognition = new SpeechRecognition();
 
-    recognition.lang = state.settings.voiceLanguage || "en-US";
+    recognition.lang =
+      state.settings.voiceLanguage || "en-US";
+
     recognition.interimResults = true;
     recognition.continuous = false;
 
-    let transcript = "";
+    let finalTranscript = "";
 
     recognition.onstart = () => {
       state.listening = true;
@@ -887,14 +950,23 @@
     };
 
     recognition.onresult = event => {
-      transcript = "";
+      let interimTranscript = "";
 
       for (let i = event.resultIndex; i < event.results.length; i++) {
-        transcript += event.results[i][0].transcript;
+        const result = event.results[i];
+
+        if (result.isFinal) {
+          finalTranscript += result[0].transcript;
+        } else {
+          interimTranscript += result[0].transcript;
+        }
       }
 
       const input = $("#brainInput");
-      if (input) input.value = transcript;
+
+      if (input) {
+        input.value = finalTranscript + interimTranscript;
+      }
     };
 
     recognition.onerror = event => {
@@ -903,6 +975,8 @@
 
     recognition.onend = () => {
       state.listening = false;
+      state.recognition = null;
+
       setConnection("Ready", "ready");
 
       const input = $("#brainInput");
@@ -917,20 +991,24 @@
     try {
       recognition.start();
     } catch (error) {
+      state.recognition = null;
+      state.listening = false;
+
       showToast("Could not start voice input.");
     }
   }
 
   function stopVoiceRecognition() {
-    if (state.recognition) {
-      try {
-        state.recognition.stop();
-      } catch {}
+    const recognition = state.recognition;
 
-      state.recognition = null;
-    }
-
+    state.recognition = null;
     state.listening = false;
+
+    if (recognition) {
+      try {
+        recognition.abort();
+      } catch {}
+    }
   }
 
   function speakText(text) {
@@ -942,7 +1020,9 @@
     stopSpeaking();
 
     const utterance = new SpeechSynthesisUtterance(text);
-    utterance.lang = state.settings.voiceLanguage || "en-US";
+
+    utterance.lang =
+      state.settings.voiceLanguage || "en-US";
 
     speechSynthesis.speak(utterance);
   }
@@ -955,8 +1035,60 @@
 
   
   /* =====================================================
-     NAVIGATION AND SIDEBAR
+     SIDEBAR AND PAGE NAVIGATION
   ===================================================== */
+
+  function isSidebarOpen() {
+    return Boolean($("#sidebar")?.classList.contains("open"));
+  }
+
+  function setSidebarVisual(open) {
+    state.sidebarOpen = open;
+
+    $("#sidebar")?.classList.toggle("open", open);
+
+    $("#sidebarOverlay")?.classList.toggle(
+      "visible",
+      open
+    );
+
+    $("#menuToggle")?.setAttribute(
+      "aria-expanded",
+      String(open)
+    );
+  }
+
+  function openSidebar() {
+    if (isSidebarOpen()) return;
+
+    // Add a browser-history entry so Android Back closes the sidebar.
+    history.pushState(
+      {
+        josephAI: true,
+        type: "sidebar",
+        page: state.currentPage
+      },
+      ""
+    );
+
+    setSidebarVisual(true);
+  }
+
+  function closeSidebar() {
+    if (!isSidebarOpen()) return;
+
+    // If the sidebar owns the current history entry,
+    // Android/browser Back will close it naturally.
+    if (
+      history.state?.josephAI &&
+      history.state.type === "sidebar"
+    ) {
+      history.back();
+      return;
+    }
+
+    setSidebarVisual(false);
+  }
 
   function showPage(page) {
     const allowedPages = [
@@ -967,7 +1099,41 @@
       "settings"
     ];
 
-    if (!allowedPages.includes(page)) page = "brain";
+    if (!allowedPages.includes(page)) {
+      page = "brain";
+    }
+
+    const sidebarWasOpen = isSidebarOpen();
+    const pageChanged = page !== state.currentPage;
+
+    // If a page is selected from the sidebar,
+    // replace the sidebar entry instead of leaving a stale entry.
+    if (
+      sidebarWasOpen &&
+      history.state?.josephAI &&
+      history.state.type === "sidebar"
+    ) {
+      history.replaceState(
+        {
+          josephAI: true,
+          type: "page",
+          page
+        },
+        ""
+      );
+
+    } else if (pageChanged) {
+      history.pushState(
+        {
+          josephAI: true,
+          type: "page",
+          page
+        },
+        ""
+      );
+    }
+
+    state.currentPage = page;
 
     $$("[data-page-section]").forEach(section => {
       section.classList.toggle(
@@ -992,7 +1158,7 @@
           : page.charAt(0).toUpperCase() + page.slice(1);
     }
 
-    closeSidebar();
+    setSidebarVisual(false);
 
     if (page === "projects") renderProjects();
     if (page === "memory") renderMemory();
@@ -1000,14 +1166,52 @@
     if (page === "autopilot") renderAutopilot();
   }
 
-  function openSidebar() {
-    $("#sidebar")?.classList.add("open");
-    $("#sidebarOverlay")?.classList.add("visible");
-  }
+  function handleBrowserBack(event) {
+    // Back from an open sidebar closes it.
+    if (event.state?.josephAI && event.state.type === "sidebar") {
+      setSidebarVisual(true);
+      return;
+    }
 
-  function closeSidebar() {
-    $("#sidebar")?.classList.remove("open");
-    $("#sidebarOverlay")?.classList.remove("visible");
+    setSidebarVisual(false);
+
+    const previousPage =
+      event.state?.josephAI
+        ? event.state.page
+        : "brain";
+
+    state.currentPage = previousPage || "brain";
+
+    $$("[data-page-section]").forEach(section => {
+      section.classList.toggle(
+        "active",
+        section.dataset.pageSection === state.currentPage
+      );
+    });
+
+    $$("[data-page]").forEach(button => {
+      button.classList.toggle(
+        "active",
+        button.dataset.page === state.currentPage
+      );
+    });
+
+    const modelName = $("#currentModelName");
+
+    if (modelName) {
+      modelName.textContent =
+        state.currentPage === "brain"
+          ? "Joseph AI"
+          : state.currentPage.charAt(0).toUpperCase() +
+            state.currentPage.slice(1);
+    }
+
+    stopSpeaking();
+
+    if (state.currentPage === "projects") renderProjects();
+    if (state.currentPage === "memory") renderMemory();
+    if (state.currentPage === "settings") renderSettings();
+    if (state.currentPage === "autopilot") renderAutopilot();
   }
 
   function setupNavigation() {
@@ -1017,7 +1221,10 @@
       });
     });
 
-    $("#menuToggle")?.addEventListener("click", openSidebar);
+    $("#menuToggle")?.addEventListener(
+      "click",
+      openSidebar
+    );
 
     $("#closeSidebarButton")?.addEventListener(
       "click",
@@ -1031,22 +1238,33 @@
 
     $("#newChatButton")?.addEventListener("click", () => {
       createConversation();
-      closeSidebar();
     });
 
+    // Android Back button and browser Back button.
+    window.addEventListener("popstate", handleBrowserBack);
+
+    // Escape is the keyboard equivalent of Back.
     document.addEventListener("keydown", event => {
       if (event.key === "Escape") {
-        closeSidebar();
-        stopSpeaking();
+        if (isSidebarOpen()) {
+          closeSidebar();
+        } else {
+          stopSpeaking();
+        }
       }
     });
 
+    // Touch navigation.
     document.addEventListener("touchstart", event => {
       const touch = event.touches[0];
       if (!touch) return;
 
       state.touchStartX = touch.clientX;
       state.touchStartY = touch.clientY;
+
+      state.touchStartedInSidebar =
+        Boolean(touch.target.closest("#sidebar"));
+
     }, { passive: true });
 
     document.addEventListener("touchend", event => {
@@ -1056,31 +1274,37 @@
       const dx = touch.clientX - state.touchStartX;
       const dy = touch.clientY - state.touchStartY;
 
+      // Ignore vertical gestures. Normal page scrolling stays natural.
       if (Math.abs(dy) > Math.abs(dx)) return;
 
       if (
-        state.touchStartX < 30 &&
-        dx > 80
+        !isSidebarOpen() &&
+        state.touchStartX <= CONFIG.edgeWidth &&
+        dx >= CONFIG.swipeThreshold
       ) {
         openSidebar();
+        return;
       }
 
       if (
-        $("#sidebar")?.classList.contains("open") &&
-        dx < -80
+        isSidebarOpen() &&
+        state.touchStartedInSidebar &&
+        dx <= -CONFIG.swipeThreshold
       ) {
         closeSidebar();
       }
+
     }, { passive: true });
   }
 
-   /* =====================================================
+    /* =====================================================
      CHAT COMPOSER
   ===================================================== */
 
   function setupComposer() {
     $("#brainForm")?.addEventListener("submit", event => {
       event.preventDefault();
+
       sendMessage($("#brainInput")?.value || "");
     });
 
@@ -1099,6 +1323,7 @@
       const input = event.target;
 
       input.style.height = "auto";
+
       input.style.height =
         Math.min(input.scrollHeight, 180) + "px";
     });
@@ -1119,9 +1344,11 @@
 
       sendMessage(prompt.dataset.prompt);
     });
+
+    setupMessageActions();
   }
 
-    /* =====================================================
+  /* =====================================================
      PROJECTS
   ===================================================== */
 
@@ -1167,6 +1394,7 @@
     container.innerHTML = state.memory.map((item, index) => `
       <div class="memory-item">
         <span>${escapeHTML(item.text || item)}</span>
+
         <button
           type="button"
           data-delete-memory="${index}"
@@ -1250,7 +1478,7 @@
 
       const data = await requestJSON(
         `${CONFIG.api.jobs}?${params.toString()}`,
-        { method: "GET", headers: {} }
+        { method: "GET" }
       );
 
       const jobs = Array.isArray(data)
@@ -1265,23 +1493,43 @@
         container.innerHTML = `
           <p class="muted-text">
             No opportunities were returned by the jobs service.
-            Try again later or ask Joseph AI to search for a different category.
+            Try again later or choose another category.
           </p>
         `;
       } else {
-        container.innerHTML = jobs.map(job => `
-          <article class="opportunity-item">
-            <h4>${escapeHTML(job.title || job.name || "Untitled listing")}</h4>
-            <p>${escapeHTML(job.company || job.organization || "Company not provided")}</p>
-            <p>${escapeHTML(job.location || "Location not provided")}</p>
-            <p>${escapeHTML(job.salary || job.pay || "Pay not disclosed")}</p>
-            ${job.url || job.link ? `
-              <a href="${escapeHTML(job.url || job.link)}"
-                 target="_blank"
-                 rel="noopener noreferrer">View original listing</a>
-            ` : ""}
-          </article>
-        `).join("");
+        container.innerHTML = jobs.map(job => {
+          const url = job.url || job.link || "";
+
+          return `
+            <article class="opportunity-item">
+
+              <h4>${escapeHTML(
+                job.title || job.name || "Untitled listing"
+              )}</h4>
+
+              <p>${escapeHTML(
+                job.company || job.organization || "Company not provided"
+              )}</p>
+
+              <p>${escapeHTML(
+                job.location || "Location not provided"
+              )}</p>
+
+              <p>${escapeHTML(
+                job.salary || job.pay || "Pay not disclosed"
+              )}</p>
+
+              ${url ? `
+                <a
+                  href="${escapeHTML(url)}"
+                  target="_blank"
+                  rel="noopener noreferrer"
+                >View original listing</a>
+              ` : ""}
+
+            </article>
+          `;
+        }).join("");
       }
 
       if ($("#autopilotOpportunityCount")) {
@@ -1321,7 +1569,7 @@
     );
   }
 
-    /* =====================================================
+  /* =====================================================
      SETTINGS
   ===================================================== */
 
@@ -1365,7 +1613,8 @@
       if (element.type === "checkbox") {
         element.checked = Boolean(state.settings[key]);
       } else {
-        element.value = state.settings[key] ?? defaultSettings[key];
+        element.value =
+          state.settings[key] ?? defaultSettings[key];
       }
     });
   }
@@ -1403,7 +1652,10 @@
       renderSettings();
     });
 
-    $("#exportDataButton")?.addEventListener("click", exportData);
+    $("#exportDataButton")?.addEventListener(
+      "click",
+      exportData
+    );
 
     $("#clearHistoryButton")?.addEventListener(
       "click",
@@ -1450,20 +1702,34 @@
     showToast("Workspace backup exported.");
   }
 
-  /* =====================================================
+    /* =====================================================
      INITIALIZATION
   ===================================================== */
 
   function init() {
     loadWorkspace();
 
+    // Create a starting point for in-app browser navigation.
+    history.replaceState(
+      {
+        josephAI: true,
+        type: "base",
+        page: "brain"
+      },
+      ""
+    );
+
+    state.currentPage = "brain";
+
     applySettings();
+
     renderMessages();
     renderConversationHistory();
     renderProjects();
     renderMemory();
     renderAutopilot();
     renderSettings();
+    renderAttachments();
 
     setupNavigation();
     setupHistoryActions();
@@ -1475,10 +1741,15 @@
 
     setConnection("Ready", "ready");
 
-    console.log("Joseph AI V2 initialized.");
+    console.log("Joseph AI V2 initialized successfully.");
   }
 
-  document.addEventListener("DOMContentLoaded", init);
+  if (document.readyState === "loading") {
+    document.addEventListener("DOMContentLoaded", init, {
+      once: true
+    });
+  } else {
+    init();
+  }
 
 })();
-   
