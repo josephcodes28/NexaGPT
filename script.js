@@ -4,7 +4,8 @@
 /* =========================================================
    JOSEPH AI V2
    CENTRAL CHAT CONTROLLER
-   Mobile navigation | Browser history | Gemini connection
+   Mobile navigation | Browser history
+   Gemini + Groq model selection and fallback
 ========================================================= */
 
 (() => {
@@ -23,7 +24,8 @@
       applications: "JOSEPH_V2_APPLICATIONS"
     },
 
-    maxAttachmentSize: 8 * 1024 * 1024,
+    // Match the backend's 5 MB image limit.
+    maxAttachmentSize: 5 * 1024 * 1024,
     maxAttachments: 5,
     requestTimeout: 90000,
     swipeThreshold: 80,
@@ -260,6 +262,50 @@
       data?.result?.text ||
       "I received a response, but it did not contain readable text."
     );
+  }
+
+  /* =====================================================
+     MODEL PROVIDER SELECTION
+  ===================================================== */
+
+  function getSelectedProvider() {
+    const selected = String(
+      state.settings.model || "auto"
+    ).toLowerCase().trim();
+
+    if (selected === "groq") {
+      return "groq";
+    }
+
+    // Automatic starts with Gemini.
+    // The backend handles Groq fallback.
+    return "gemini";
+  }
+
+  function getProviderLabel(provider) {
+    if (provider === "groq") return "Groq";
+    if (provider === "gemini") return "Gemini";
+
+    return "AI";
+  }
+
+  function updateProviderStatus(data) {
+    const provider = String(
+      data?.provider || ""
+    ).toLowerCase();
+
+    const label = getProviderLabel(provider);
+
+    if (data?.fallbackUsed) {
+      setConnection(
+        `${label} • Fallback active`,
+        "ready"
+      );
+
+      return;
+    }
+
+    setConnection(`${label} • Ready`, "ready");
   }
 
   /* =====================================================
@@ -678,7 +724,7 @@
       }
 
       if (file.size > CONFIG.maxAttachmentSize) {
-        showToast(`${file.name} is larger than 8 MB.`);
+        showToast(`${file.name} is larger than 5 MB.`);
         continue;
       }
 
@@ -758,7 +804,7 @@
     });
   }
 
-  /* =====================================================
+    /* =====================================================
      CENTRAL BRAIN CONNECTION
   ===================================================== */
 
@@ -817,6 +863,10 @@
           content: item.content
         }));
 
+      // Convert the saved setting into a provider understood
+      // by the backend.
+      const selectedProvider = getSelectedProvider();
+
       const payload = {
         message:
           message || "Please examine my image attachment.",
@@ -829,13 +879,16 @@
           data: file.data
         })),
 
+        // The backend reads this field to choose Gemini or Groq.
+        provider: selectedProvider,
+
         settings: {
           model: state.settings.model,
+          provider: selectedProvider,
           webSearch: state.settings.webSearch
         }
       };
 
-      // Send the actual request to the Joseph AI Brain.
       const response = await fetch(CONFIG.api.chat, {
         method: "POST",
 
@@ -866,13 +919,17 @@
 
       const reply = getAssistantText(data);
 
-      addMessage("assistant", reply);
+      addMessage("assistant", reply, {
+        provider: data.provider || selectedProvider,
+        model: data.model || null,
+        fallbackUsed: Boolean(data.fallbackUsed)
+      });
+
+      updateProviderStatus(data);
 
       if (state.settings.speakResponses) {
         speakText(reply);
       }
-
-      setConnection("Ready", "ready");
 
     } catch (error) {
       if (error.name === "AbortError") {
@@ -915,7 +972,7 @@
     stopVoiceRecognition();
   }
 
-  /* =====================================================
+    /* =====================================================
      VOICE
   ===================================================== */
 
@@ -1033,7 +1090,6 @@
     }
   }
 
-  
   /* =====================================================
      SIDEBAR AND PAGE NAVIGATION
   ===================================================== */
@@ -1061,7 +1117,6 @@
   function openSidebar() {
     if (isSidebarOpen()) return;
 
-    // Add a browser-history entry so Android Back closes the sidebar.
     history.pushState(
       {
         josephAI: true,
@@ -1077,8 +1132,6 @@
   function closeSidebar() {
     if (!isSidebarOpen()) return;
 
-    // If the sidebar owns the current history entry,
-    // Android/browser Back will close it naturally.
     if (
       history.state?.josephAI &&
       history.state.type === "sidebar"
@@ -1106,8 +1159,6 @@
     const sidebarWasOpen = isSidebarOpen();
     const pageChanged = page !== state.currentPage;
 
-    // If a page is selected from the sidebar,
-    // replace the sidebar entry instead of leaving a stale entry.
     if (
       sidebarWasOpen &&
       history.state?.josephAI &&
@@ -1167,7 +1218,6 @@
   }
 
   function handleBrowserBack(event) {
-    // Back from an open sidebar closes it.
     if (event.state?.josephAI && event.state.type === "sidebar") {
       setSidebarVisual(true);
       return;
@@ -1240,10 +1290,8 @@
       createConversation();
     });
 
-    // Android Back button and browser Back button.
     window.addEventListener("popstate", handleBrowserBack);
 
-    // Escape is the keyboard equivalent of Back.
     document.addEventListener("keydown", event => {
       if (event.key === "Escape") {
         if (isSidebarOpen()) {
@@ -1254,7 +1302,6 @@
       }
     });
 
-    // Touch navigation.
     document.addEventListener("touchstart", event => {
       const touch = event.touches[0];
       if (!touch) return;
@@ -1274,7 +1321,6 @@
       const dx = touch.clientX - state.touchStartX;
       const dy = touch.clientY - state.touchStartY;
 
-      // Ignore vertical gestures. Normal page scrolling stays natural.
       if (Math.abs(dy) > Math.abs(dx)) return;
 
       if (
@@ -1447,7 +1493,7 @@
     });
   }
 
-    /* =====================================================
+   /* =====================================================
      AUTOPILOT
   ===================================================== */
 
@@ -1640,6 +1686,16 @@
 
         saveSettings();
         applySettings();
+
+        if (key === "model") {
+          const provider = getSelectedProvider();
+
+          showToast(
+            state.settings.model === "auto"
+              ? "Automatic model selection saved. Gemini will be tried first."
+              : `${getProviderLabel(provider)} preference saved.`
+          );
+        }
       });
     });
 
@@ -1709,7 +1765,6 @@
   function init() {
     loadWorkspace();
 
-    // Create a starting point for in-app browser navigation.
     history.replaceState(
       {
         josephAI: true,
