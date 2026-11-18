@@ -13,6 +13,10 @@ const GEMINI_API_URL =
   "https://generativelanguage.googleapis.com/v1beta/models/";
 
 const DEFAULT_MODEL = "gemini-2.5-flash";
+const MAX_MESSAGE_LENGTH = 12000;
+const MAX_HISTORY_MESSAGES = 20;
+const MAX_ATTACHMENT_SIZE = 5 * 1024 * 1024;
+const REQUEST_TIMEOUT = 45000;
 
 const SYSTEM_INSTRUCTION = `
 You are Joseph AI, an intelligent AI assistant and digital worker.
@@ -36,7 +40,7 @@ function sendJSON(res, status, data) {
   return res.status(status).json(data);
 }
 
-function cleanText(value, maxLength = 12000) {
+function cleanText(value, maxLength = MAX_MESSAGE_LENGTH) {
   if (typeof value !== "string") return "";
   return value.trim().slice(0, maxLength);
 }
@@ -45,9 +49,11 @@ function normalizeHistory(history) {
   if (!Array.isArray(history)) return [];
 
   return history
-    .slice(-20)
+    .slice(-MAX_HISTORY_MESSAGES)
     .map((item) => {
-      if (!item || typeof item !== "object") return null;
+      if (!item || typeof item !== "object") {
+        return null;
+      }
 
       const role =
         item.role === "assistant" || item.role === "model"
@@ -69,6 +75,56 @@ function normalizeHistory(history) {
       };
     })
     .filter(Boolean);
+}
+
+function normalizeAttachments(attachments) {
+  if (!Array.isArray(attachments)) return [];
+
+  return attachments.slice(0, 5).map((file) => {
+    if (!file || typeof file !== "object") {
+      return null;
+    }
+
+    const name = cleanText(file.name, 200);
+    const type = cleanText(file.type, 100).toLowerCase();
+    const data = cleanText(file.data, MAX_ATTACHMENT_SIZE * 2);
+
+    if (
+      !name ||
+      !type ||
+      !data ||
+      !type.startsWith("image/")
+    ) {
+      return null;
+    }
+
+    const match = data.match(
+      /^data:(image\/[a-zA-Z0-9.+-]+);base64,([a-zA-Z0-9+/=\s]+)$/
+    );
+
+    if (!match) return null;
+
+    const mimeType = match[1];
+    const base64Data = match[2].replace(/\s/g, "");
+
+    const estimatedSize = Math.floor(
+      (base64Data.length * 3) / 4
+    );
+
+    if (
+      estimatedSize <= 0 ||
+      estimatedSize > MAX_ATTACHMENT_SIZE
+    ) {
+      return null;
+    }
+
+    return {
+      inlineData: {
+        mimeType,
+        data: base64Data
+      }
+    };
+  }).filter(Boolean);
 }
 
 function extractReply(data) {
@@ -105,7 +161,7 @@ export default async function handler(req, res) {
       return sendJSON(res, 503, {
         success: false,
         error:
-          "Gemini is not configured yet. Add GEMINI_API_KEY to your Vercel environment variables."
+          "Gemini is not configured. Add GEMINI_API_KEY to your Vercel environment variables."
       });
     }
 
@@ -115,8 +171,7 @@ export default async function handler(req, res) {
         : req.body || {};
 
     const message = cleanText(
-      body.message || body.prompt,
-      12000
+      body.message || body.prompt
     );
 
     if (!message) {
@@ -131,12 +186,14 @@ export default async function handler(req, res) {
       100
     );
 
+    // Accept both the new and older frontend formats.
     const history = normalizeHistory(
-      body.conversation
+      Array.isArray(body.history)
+        ? body.history
+        : body.conversation
     );
 
-    // The current message is sent separately.
-    // Avoid sending it twice if it is already in history.
+    // Avoid sending the current message twice.
     const previousMessages = history.filter(
       (item, index) =>
         !(
@@ -146,11 +203,20 @@ export default async function handler(req, res) {
         )
     );
 
+    const attachments = normalizeAttachments(
+      body.attachments
+    );
+
+    const currentMessageParts = [
+      { text: message },
+      ...attachments
+    ];
+
     const contents = [
       ...previousMessages,
       {
         role: "user",
-        parts: [{ text: message }]
+        parts: currentMessageParts
       }
     ];
 
@@ -158,7 +224,7 @@ export default async function handler(req, res) {
 
     const timeout = setTimeout(
       () => controller.abort(),
-      45000
+      REQUEST_TIMEOUT
     );
 
     let geminiResponse;
@@ -204,12 +270,14 @@ export default async function handler(req, res) {
         providerMessage
       );
 
-      if (geminiResponse.status === 401 ||
-          geminiResponse.status === 403) {
+      if (
+        geminiResponse.status === 401 ||
+        geminiResponse.status === 403
+      ) {
         return sendJSON(res, 502, {
           success: false,
           error:
-            "Gemini rejected the API credentials. Check your Vercel GEMINI_API_KEY setting."
+            "Gemini rejected the API credentials. Check GEMINI_API_KEY in Vercel."
         });
       }
 
@@ -225,7 +293,7 @@ export default async function handler(req, res) {
         return sendJSON(res, 502, {
           success: false,
           error:
-            `Gemini model "${model}" was not found or is unavailable. Check GEMINI_MODEL.`
+            `Gemini model "${model}" was not found or is unavailable.`
         });
       }
 
@@ -243,7 +311,7 @@ export default async function handler(req, res) {
       return sendJSON(res, 502, {
         success: false,
         error:
-          "Gemini returned no readable response. Please try a different message."
+          "Gemini returned no readable response. Please try again."
       });
     }
 
@@ -252,7 +320,8 @@ export default async function handler(req, res) {
       reply,
       text: reply,
       model,
-      sources: []
+      sources: [],
+      attachmentCount: attachments.length
     });
 
   } catch (error) {
@@ -272,5 +341,5 @@ export default async function handler(req, res) {
         "Joseph AI encountered a server error. Please try again."
     });
   }
-  }
+                                        }
   
