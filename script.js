@@ -264,6 +264,67 @@
     );
   }
 
+function renderSourceCards(sources) {
+  if (!Array.isArray(sources) || !sources.length) {
+    return "";
+  }
+
+  const validSources = sources.filter(source => {
+    try {
+      const url = new URL(source.url);
+      return (
+        ["http:", "https:"].includes(url.protocol) &&
+        source.title
+      );
+    } catch {
+      return false;
+    }
+  });
+
+  if (!validSources.length) return "";
+
+  return `
+    <div class="research-sources">
+      <div class="research-sources-heading">
+        <strong>Research sources</strong>
+        <span>${validSources.length} sources</span>
+      </div>
+
+      <div class="research-sources-list">
+        ${validSources.map((source, index) => `
+          <article class="research-source">
+            <div class="research-source-number">
+              ${index + 1}
+            </div>
+
+            <div class="research-source-content">
+              <a
+                href="${escapeHTML(source.url)}"
+                target="_blank"
+                rel="noopener noreferrer"
+              >
+                ${escapeHTML(source.title)}
+              </a>
+
+              ${
+                source.publishedDate
+                  ? `<small>Published: ${escapeHTML(source.publishedDate)}</small>`
+                  : ""
+              }
+
+              ${
+                source.content
+                  ? `<p>${escapeHTML(source.content)}</p>`
+                  : ""
+              }
+            </div>
+          </article>
+        `).join("")}
+      </div>
+    </div>
+  `;
+       }
+   
   /* =====================================================
      MODEL PROVIDER SELECTION
   ===================================================== */
@@ -601,8 +662,20 @@
             </div>
 
             <div class="message-text">${
-              escapeHTML(message.content).replace(/\n/g, "<br>")
-            }</div>
+  escapeHTML(message.content).replace(/\n/g, "<br>")
+}</div>
+
+${!isUser && message.webSearchUsed ? `
+  <div class="research-status">
+    ${message.webSearchError
+      ? "Web search attempted, but unavailable"
+      : "Internet research completed"}
+  </div>
+` : ""}
+
+${!isUser && message.sources?.length
+  ? renderSourceCards(message.sources)
+  : ""}
 
             ${!isUser ? `
               <div class="message-actions">
@@ -920,10 +993,18 @@
       const reply = getAssistantText(data);
 
       addMessage("assistant", reply, {
-        provider: data.provider || selectedProvider,
-        model: data.model || null,
-        fallbackUsed: Boolean(data.fallbackUsed)
-      });
+  provider: data.provider || selectedProvider,
+  model: data.model || null,
+  fallbackUsed: Boolean(data.fallbackUsed),
+
+  sources: Array.isArray(data.sources)
+    ? data.sources
+    : [],
+
+  webSearchUsed: Boolean(data.webSearchUsed),
+
+  webSearchError: data.webSearchError || null
+});
 
       updateProviderStatus(data);
 
