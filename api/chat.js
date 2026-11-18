@@ -3,16 +3,28 @@
 
 /*
  * JOSEPH AI V2
- * MAIN AI CHAT BACKEND
+ * CENTRAL AI PROVIDER GATEWAY
  *
- * Provider: Google Gemini API
+ * Providers:
+ * 1. Google Gemini
+ * 2. Groq
+ *
  * Runtime: Vercel Node.js
+ * API keys stay on the server.
  */
 
 const GEMINI_API_URL =
   "https://generativelanguage.googleapis.com/v1beta/models/";
 
-const DEFAULT_MODEL = "gemini-2.5-flash";
+const GROQ_API_URL =
+  "https://api.groq.com/openai/v1/chat/completions";
+
+const DEFAULT_GEMINI_MODEL =
+  "gemini-2.5-flash";
+
+const DEFAULT_GROQ_MODEL =
+  "openai/gpt-oss-20b";
+
 const MAX_MESSAGE_LENGTH = 12000;
 const MAX_HISTORY_MESSAGES = 20;
 const MAX_ATTACHMENT_SIZE = 5 * 1024 * 1024;
@@ -57,7 +69,7 @@ function normalizeHistory(history) {
 
       const role =
         item.role === "assistant" || item.role === "model"
-          ? "model"
+          ? "assistant"
           : item.role === "user"
             ? "user"
             : null;
@@ -69,10 +81,7 @@ function normalizeHistory(history) {
 
       if (!role || !text) return null;
 
-      return {
-        role,
-        parts: [{ text }]
-      };
+      return { role, text };
     })
     .filter(Boolean);
 }
@@ -127,7 +136,7 @@ function normalizeAttachments(attachments) {
   }).filter(Boolean);
 }
 
-function extractReply(data) {
+function extractGeminiReply(data) {
   const candidates = data?.candidates || [];
 
   for (const candidate of candidates) {
@@ -144,6 +153,192 @@ function extractReply(data) {
   return "";
 }
 
+function extractGroqReply(data) {
+  return cleanText(
+    data?.choices?.[0]?.message?.content,
+    30000
+  );
+}
+
+async function fetchWithTimeout(url, options) {
+  const controller = new AbortController();
+
+  const timeout = setTimeout(
+    () => controller.abort(),
+    REQUEST_TIMEOUT
+  );
+
+  try {
+    return await fetch(url, {
+      ...options,
+      signal: controller.signal
+    });
+  } finally {
+    clearTimeout(timeout);
+  }
+}
+
+async function callGemini({
+  apiKey,
+  model,
+  history,
+  message,
+  attachments
+}) {
+  const previousMessages = history.map((item) => ({
+    role: item.role === "assistant" ? "model" : "user",
+    parts: [{ text: item.text }]
+  }));
+
+  const contents = [
+    ...previousMessages,
+    {
+      role: "user",
+      parts: [
+        { text: message },
+        ...attachments
+      ]
+    }
+  ];
+
+  const response = await fetchWithTimeout(
+    `${GEMINI_API_URL}${encodeURIComponent(model)}:generateContent`,
+    {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+        "x-goog-api-key": apiKey
+      },
+      body: JSON.stringify({
+        systemInstruction: {
+          parts: [{ text: SYSTEM_INSTRUCTION }]
+        },
+        contents,
+        generationConfig: {
+          temperature: 0.7,
+          maxOutputTokens: 4096
+        }
+      })
+    }
+  );
+
+  const result = await response.json().catch(() => ({}));
+
+  if (!response.ok) {
+    const error = new Error(
+      result?.error?.message || "Gemini request failed."
+    );
+
+    error.status = response.status;
+    throw error;
+  }
+
+  const reply = extractGeminiReply(result);
+
+  if (!reply) {
+    throw new Error("Gemini returned an empty response.");
+  }
+
+  return {
+    reply,
+    provider: "gemini",
+    model
+  };
+}
+
+async function callGroq({
+  apiKey,
+  model,
+  history,
+  message
+}) {
+  const messages = [
+    {
+      role: "system",
+      content: SYSTEM_INSTRUCTION
+    },
+    ...history.map((item) => ({
+      role: item.role,
+      content: item.text
+    })),
+    {
+      role: "user",
+      content: message
+    }
+  ];
+
+  const response = await fetchWithTimeout(
+    GROQ_API_URL,
+    {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+        Authorization: `Bearer ${apiKey}`
+      },
+      body: JSON.stringify({
+        model,
+        messages,
+        temperature: 0.7,
+        max_completion_tokens: 4096
+      })
+    }
+  );
+
+  const result = await response.json().catch(() => ({}));
+
+  if (!response.ok) {
+    const error = new Error(
+      result?.error?.message || "Groq request failed."
+    );
+
+    error.status = response.status;
+    throw error;
+  }
+
+  const reply = extractGroqReply(result);
+
+  if (!reply) {
+    throw new Error("Groq returned an empty response.");
+  }
+
+  return {
+    reply,
+    provider: "groq",
+    model
+  };
+}
+
+function getPreferredProvider(body) {
+  const requested = cleanText(
+    body.provider ||
+    body.settings?.provider ||
+    body.settings?.modelProvider ||
+    "",
+    30
+  ).toLowerCase();
+
+  if (requested === "groq") return "groq";
+
+  return "gemini";
+}
+
+function buildSuccessResponse(
+  result,
+  attachments,
+  fallbackUsed
+) {
+  return {
+    success: true,
+    reply: result.reply,
+    text: result.reply,
+    provider: result.provider,
+    model: result.model,
+    fallbackUsed,
+    sources: [],
+    attachmentCount: attachments.length
+  };
+}
+
 export default async function handler(req, res) {
   if (req.method !== "POST") {
     res.setHeader("Allow", "POST");
@@ -155,16 +350,6 @@ export default async function handler(req, res) {
   }
 
   try {
-    const apiKey = process.env.GEMINI_API_KEY;
-
-    if (!apiKey) {
-      return sendJSON(res, 503, {
-        success: false,
-        error:
-          "Gemini is not configured. Add GEMINI_API_KEY to your Vercel environment variables."
-      });
-    }
-
     const body =
       typeof req.body === "string"
         ? JSON.parse(req.body)
@@ -181,25 +366,19 @@ export default async function handler(req, res) {
       });
     }
 
-    const model = cleanText(
-      process.env.GEMINI_MODEL || DEFAULT_MODEL,
-      100
-    );
-
-    // Accept both the new and older frontend formats.
     const history = normalizeHistory(
       Array.isArray(body.history)
         ? body.history
         : body.conversation
     );
 
-    // Avoid sending the current message twice.
+    // Do not repeat the current message in the history.
     const previousMessages = history.filter(
       (item, index) =>
         !(
           index === history.length - 1 &&
           item.role === "user" &&
-          item.parts[0].text === message
+          item.text === message
         )
     );
 
@@ -207,121 +386,138 @@ export default async function handler(req, res) {
       body.attachments
     );
 
-    const currentMessageParts = [
-      { text: message },
-      ...attachments
-    ];
+    const geminiKey = process.env.GEMINI_API_KEY;
+    const groqKey = process.env.GROQ_API_KEY;
 
-    const contents = [
-      ...previousMessages,
-      {
-        role: "user",
-        parts: currentMessageParts
-      }
-    ];
-
-    const controller = new AbortController();
-
-    const timeout = setTimeout(
-      () => controller.abort(),
-      REQUEST_TIMEOUT
+    const geminiModel = cleanText(
+      process.env.GEMINI_MODEL || DEFAULT_GEMINI_MODEL,
+      100
     );
 
-    let geminiResponse;
-
-    try {
-      geminiResponse = await fetch(
-        `${GEMINI_API_URL}${encodeURIComponent(model)}:generateContent`,
-        {
-          method: "POST",
-          headers: {
-            "Content-Type": "application/json",
-            "x-goog-api-key": apiKey
-          },
-          body: JSON.stringify({
-            systemInstruction: {
-              parts: [{ text: SYSTEM_INSTRUCTION }]
-            },
-            contents,
-            generationConfig: {
-              temperature: 0.7,
-              maxOutputTokens: 4096
-            }
-          }),
-          signal: controller.signal
-        }
-      );
-    } finally {
-      clearTimeout(timeout);
-    }
-
-    const result = await geminiResponse.json().catch(
-      () => ({})
+    const groqModel = cleanText(
+      process.env.GROQ_MODEL || DEFAULT_GROQ_MODEL,
+      100
     );
 
-    if (!geminiResponse.ok) {
-      const providerMessage =
-        result?.error?.message ||
-        "The AI provider could not complete the request.";
+    const preferredProvider = getPreferredProvider(body);
 
-      console.error(
-        "Gemini API error:",
-        geminiResponse.status,
-        providerMessage
-      );
+    // Images currently use Gemini because this gateway
+    // does not yet send image attachments to Groq.
+    const requestedProvider =
+      attachments.length > 0
+        ? "gemini"
+        : preferredProvider;
 
-      if (
-        geminiResponse.status === 401 ||
-        geminiResponse.status === 403
-      ) {
-        return sendJSON(res, 502, {
-          success: false,
-          error:
-            "Gemini rejected the API credentials. Check GEMINI_API_KEY in Vercel."
-        });
+    const providers = {
+      gemini: {
+        key: geminiKey,
+        run: () => callGemini({
+          apiKey: geminiKey,
+          model: geminiModel,
+          history: previousMessages,
+          message,
+          attachments
+        })
+      },
+
+      groq: {
+        key: groqKey,
+        run: () => callGroq({
+          apiKey: groqKey,
+          model: groqModel,
+          history: previousMessages,
+          message
+        })
       }
+    };
 
-      if (geminiResponse.status === 429) {
-        return sendJSON(res, 503, {
-          success: false,
-          error:
-            "Gemini request limit reached. Please wait and try again."
-        });
-      }
+    const first = providers[requestedProvider];
+    const secondProvider =
+      requestedProvider === "gemini" ? "groq" : "gemini";
 
-      if (geminiResponse.status === 404) {
-        return sendJSON(res, 502, {
-          success: false,
-          error:
-            `Gemini model "${model}" was not found or is unavailable.`
-        });
-      }
+    const second = providers[secondProvider];
 
-      return sendJSON(res, 502, {
+    if (!first.key && !second.key) {
+      return sendJSON(res, 503, {
         success: false,
         error:
-          "Gemini could not complete the request. Please try again.",
-        providerStatus: geminiResponse.status
+          "No AI provider is configured. Add GEMINI_API_KEY or GROQ_API_KEY in Vercel."
       });
     }
 
-    const reply = extractReply(result);
+    let firstError = null;
 
-    if (!reply) {
-      return sendJSON(res, 502, {
+    // Try the requested provider first.
+    if (first.key) {
+      try {
+        const result = await first.run();
+
+        return sendJSON(
+          res,
+          200,
+          buildSuccessResponse(
+            result,
+            attachments,
+            false
+          )
+        );
+      } catch (error) {
+        firstError = error;
+
+        console.error(
+          `${requestedProvider} provider failed:`,
+          error.status || "network/error",
+          error.message
+        );
+      }
+    }
+
+    // Do not send image requests to Groq in this version.
+    const canFallback =
+      attachments.length === 0 ||
+      secondProvider === "gemini";
+
+    if (second.key && canFallback) {
+      try {
+        const result = await second.run();
+
+        return sendJSON(
+          res,
+          200,
+          buildSuccessResponse(
+            result,
+            attachments,
+            true
+          )
+        );
+      } catch (error) {
+        console.error(
+          `${secondProvider} fallback failed:`,
+          error.status || "network/error",
+          error.message
+        );
+      }
+    }
+
+    if (!first.key && !second.key) {
+      return sendJSON(res, 503, {
         success: false,
-        error:
-          "Gemini returned no readable response. Please try again."
+        error: "No AI provider is available."
       });
     }
 
-    return sendJSON(res, 200, {
-      success: true,
-      reply,
-      text: reply,
-      model,
-      sources: [],
-      attachmentCount: attachments.length
+    if (firstError?.name === "AbortError") {
+      return sendJSON(res, 504, {
+        success: false,
+        error:
+          "The AI request timed out. Please try again."
+      });
+    }
+
+    return sendJSON(res, 503, {
+      success: false,
+      error:
+        "Joseph AI could not get a response from its available AI providers. Please try again."
     });
 
   } catch (error) {
@@ -341,5 +537,5 @@ export default async function handler(req, res) {
         "Joseph AI encountered a server error. Please try again."
     });
   }
-                                        }
-  
+    }
+    
