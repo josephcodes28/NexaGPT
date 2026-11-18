@@ -1938,3 +1938,97 @@ body {
     height: 100dvh;
   }
 }
+
+/* =====================================================
+   JOSEPH AI — INTERNET RESEARCH SOURCES
+===================================================== */
+
+.research-status {
+  display: inline-flex;
+  margin-top: 12px;
+  padding: 6px 10px;
+  border-radius: 8px;
+  background: var(--surface, #191b24);
+  color: var(--text-secondary, #aaa);
+  font-size: 12px;
+}
+
+.research-sources {
+  margin-top: 16px;
+  padding: 14px;
+  border: 1px solid var(--border, #30323c);
+  border-radius: 14px;
+  background: var(--surface, #191b24);
+}
+
+.research-sources-heading {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 10px;
+  margin-bottom: 12px;
+  font-size: 13px;
+}
+
+.research-sources-heading span {
+  color: var(--text-secondary, #aaa);
+  font-size: 12px;
+}
+
+.research-sources-list {
+  display: grid;
+  gap: 10px;
+}
+
+.research-source {
+  display: flex;
+  align-items: flex-start;
+  gap: 10px;
+  padding: 10px;
+  border-radius: 10px;
+  background: var(--bg-secondary, #15171f);
+}
+
+.research-source-number {
+  display: grid;
+  place-items: center;
+  flex: 0 0 24px;
+  width: 24px;
+  height: 24px;
+  border-radius: 50%;
+  background: var(--accent, #c8922e);
+  color: #111;
+  font-size: 12px;
+  font-weight: 700;
+}
+
+.research-source-content {
+  min-width: 0;
+}
+
+.research-source-content a {
+  color: var(--text-primary, #fff);
+  font-size: 13px;
+  font-weight: 600;
+  text-decoration: none;
+  overflow-wrap: anywhere;
+}
+
+.research-source-content a:hover {
+  text-decoration: underline;
+}
+
+.research-source-content small {
+  display: block;
+  margin-top: 5px;
+  color: var(--text-secondary, #aaa);
+  font-size: 11px;
+}
+
+.research-source-content p {
+  margin: 7px 0 0;
+  color: var(--text-secondary, #aaa);
+  font-size: 12px;
+  line-height: 1.6;
+  overflow-wrap: anywhere;
+}
