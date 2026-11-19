@@ -1224,79 +1224,93 @@ ${!isUser && message.sources?.length
     setSidebarVisual(false);
   }
 
-  function showPage(page) {
-    const allowedPages = [
-      "brain",
-      "projects",
-      "autopilot",
-      "memory",
-      "settings"
-    ];
+  
+function showPage(page) {
+  const allowedPages = [
+    "brain",
+    "website-builder",
+    "app-builder",
+    "game-builder",
+    "remote-work",
+    "projects",
+    "autopilot",
+    "memory",
+    "settings"
+  ];
 
-    if (!allowedPages.includes(page)) {
-      page = "brain";
-    }
-
-    const sidebarWasOpen = isSidebarOpen();
-    const pageChanged = page !== state.currentPage;
-
-    if (
-      sidebarWasOpen &&
-      history.state?.josephAI &&
-      history.state.type === "sidebar"
-    ) {
-      history.replaceState(
-        {
-          josephAI: true,
-          type: "page",
-          page
-        },
-        ""
-      );
-
-    } else if (pageChanged) {
-      history.pushState(
-        {
-          josephAI: true,
-          type: "page",
-          page
-        },
-        ""
-      );
-    }
-
-    state.currentPage = page;
-
-    $$("[data-page-section]").forEach(section => {
-      section.classList.toggle(
-        "active",
-        section.dataset.pageSection === page
-      );
-    });
-
-    $$("[data-page]").forEach(button => {
-      button.classList.toggle(
-        "active",
-        button.dataset.page === page
-      );
-    });
-
-    const modelName = $("#currentModelName");
-
-    if (modelName) {
-      modelName.textContent =
-        page === "brain"
-          ? "Joseph AI"
-          : page.charAt(0).toUpperCase() + page.slice(1);
-    }
-
-    setSidebarVisual(false);
-
-    if (page === "projects") renderProjects();
-    if (page === "memory") renderMemory();
-    if (page === "settings") renderSettings();
-    if (page === "autopilot") renderAutopilot();
+  if (!allowedPages.includes(page)) {
+    page = "brain";
   }
+
+  const sidebarWasOpen = isSidebarOpen();
+  const pageChanged = page !== state.currentPage;
+
+  if (
+    sidebarWasOpen &&
+    history.state?.josephAI &&
+    history.state.type === "sidebar"
+  ) {
+    history.replaceState(
+      {
+        josephAI: true,
+        type: "page",
+        page
+      },
+      ""
+    );
+  } else if (pageChanged) {
+    history.pushState(
+      {
+        josephAI: true,
+        type: "page",
+        page
+      },
+      ""
+    );
+  }
+
+  state.currentPage = page;
+
+  $$("[data-page-section]").forEach(section => {
+    section.classList.toggle(
+      "active",
+      section.dataset.pageSection === page
+    );
+  });
+
+  $$("[data-page]").forEach(button => {
+    button.classList.toggle(
+      "active",
+      button.dataset.page === page
+    );
+  });
+
+  const pageNames = {
+    brain: "Joseph AI",
+    "website-builder": "Website Builder",
+    "app-builder": "App Builder",
+    "game-builder": "Game Builder",
+    "remote-work": "Remote Work",
+    projects: "Projects",
+    autopilot: "Autopilot",
+    memory: "Memory",
+    settings: "Settings"
+  };
+
+  const modelName = $("#currentModelName");
+
+  if (modelName) {
+    modelName.textContent = pageNames[page] || "Joseph AI";
+  }
+
+  setSidebarVisual(false);
+
+  if (page === "projects") renderProjects();
+  if (page === "memory") renderMemory();
+  if (page === "settings") renderSettings();
+  if (page === "autopilot") renderAutopilot();
+}
+   
 
   function handleBrowserBack(event) {
     if (event.state?.josephAI && event.state.type === "sidebar") {
