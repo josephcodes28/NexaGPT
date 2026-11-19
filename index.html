@@ -356,65 +356,370 @@
 
       </section>
 
-      <!-- WEBSITE BUILDER PAGE -->
-      <section class="page-section secondary-page" id="page-website-builder" data-page-section="website-builder">
-        <div class="secondary-page-content">
-          <div class="page-heading">
-            <span class="page-heading-icon">⌘</span>
+      
+<!-- WEBSITE BUILDER PAGE -->
+<section class="page-section secondary-page" id="page-website-builder" data-page-section="website-builder">
+
+  <div class="secondary-page-content website-studio">
+
+    <!-- PAGE HEADER -->
+    <div class="page-heading website-studio-heading">
+      <span class="page-heading-icon">⌘</span>
+      <div>
+        <h1>Website Studio</h1>
+        <p>Design, generate and develop professional websites for real businesses and clients.</p>
+      </div>
+    </div>
+
+    <!-- STUDIO INTRO -->
+    <div class="website-studio-hero">
+      <div class="website-hero-content">
+        <span class="website-eyebrow">JOSEPH AI WEBSITE STUDIO</span>
+        <h2>Turn your ideas into <span>professional websites.</span></h2>
+        <p>
+          Create responsive websites for restaurants, hotels, fashion brands,
+          businesses, schools, churches, portfolios and more.
+        </p>
+        <div class="website-hero-tags">
+          <span>Responsive design</span>
+          <span>Modern layouts</span>
+          <span>Client projects</span>
+        </div>
+      </div>
+      <div class="website-hero-symbol" aria-hidden="true">⌘</div>
+    </div>
+
+    <!-- MAIN BUILDER GRID -->
+    <div class="website-studio-grid">
+
+      <!-- PROJECT BRIEF -->
+      <div class="workspace-card website-form-card">
+
+        <div class="website-card-heading">
+          <div>
+            <span class="website-step-label">STEP 01</span>
+            <h2>Tell us about your website</h2>
+            <p class="muted-text">Give Joseph AI the details needed to create your website.</p>
+          </div>
+          <span class="website-card-icon">✎</span>
+        </div>
+
+        <form id="websiteBuilderForm" class="builder-form website-builder-form">
+
+          <div class="website-field">
+            <label for="websiteProjectName">Website or business name *</label>
+            <input
+              id="websiteProjectName"
+              name="projectName"
+              type="text"
+              placeholder="e.g. Taste Haven Restaurant"
+              maxlength="100"
+              required
+            >
+          </div>
+
+          <div class="website-field">
+            <label for="websiteBusinessType">Business category *</label>
+            <select id="websiteBusinessType" name="businessType" required>
+              <option value="">Choose a business category</option>
+              <option value="Restaurant and food">Restaurant and food</option>
+              <option value="Hotel and hospitality">Hotel and hospitality</option>
+              <option value="Fashion and clothing store">Fashion and clothing store</option>
+              <option value="Real estate">Real estate</option>
+              <option value="School and education">School and education</option>
+              <option value="Church and religious organization">Church and religious organization</option>
+              <option value="Healthcare and medical">Healthcare and medical</option>
+              <option value="Technology company">Technology company</option>
+              <option value="Business and corporate">Business and corporate</option>
+              <option value="Personal portfolio">Personal portfolio</option>
+              <option value="E-commerce store">E-commerce store</option>
+              <option value="Travel and tourism">Travel and tourism</option>
+              <option value="Beauty and wellness">Beauty and wellness</option>
+              <option value="Other">Other</option>
+            </select>
+          </div>
+
+          <div class="website-field">
+            <label for="websiteDescription">Describe the website *</label>
+            <textarea
+              id="websiteDescription"
+              name="description"
+              rows="5"
+              maxlength="5000"
+              placeholder="Describe the business, its services, products, goals and the kind of website you want..."
+              required
+            ></textarea>
+          </div>
+
+          <div class="website-field">
+            <label for="websiteAudience">Target audience</label>
+            <input
+              id="websiteAudience"
+              name="audience"
+              type="text"
+              placeholder="e.g. Customers, families, business owners"
+            >
+          </div>
+
+          <div class="website-field">
+            <label for="websiteFeatures">Features and pages required</label>
+            <textarea
+              id="websiteFeatures"
+              name="features"
+              rows="4"
+              placeholder="e.g. Home, About, Services, Products, Contact, Booking form, Shopping cart..."
+            ></textarea>
+            <small class="website-field-hint">
+              List the pages and features your client needs.
+            </small>
+          </div>
+
+          <div class="website-form-divider"></div>
+
+          <div class="website-card-heading">
             <div>
-              <h1>Website Builder</h1>
-              <p>Create professional websites for businesses, brands and clients.</p>
+              <span class="website-step-label">STEP 02</span>
+              <h2>Choose the design</h2>
             </div>
           </div>
 
-          <div class="workspace-card">
-            <h2>Build a professional website</h2>
-            <p class="muted-text">Describe the website you want Joseph AI to create.</p>
+          <div class="website-field">
+            <label for="websiteStyle">Visual style</label>
+            <select id="websiteStyle" name="visualStyle">
+              <option value="Modern and professional">Modern and professional</option>
+              <option value="Luxury and elegant">Luxury and elegant</option>
+              <option value="Minimal and clean">Minimal and clean</option>
+              <option value="Bold and creative">Bold and creative</option>
+              <option value="Premium 3D-inspired design">Premium 3D-inspired design</option>
+              <option value="Colorful and playful">Colorful and playful</option>
+              <option value="Corporate and trustworthy">Corporate and trustworthy</option>
+            </select>
+          </div>
 
-            <div class="builder-form">
-              <label for="websiteProjectName">Website or business name</label>
-              <input id="websiteProjectName" type="text" placeholder="e.g. Taste Haven Restaurant">
+          <div class="website-field">
+            <label for="websiteColors">Preferred colours</label>
+            <input
+              id="websiteColors"
+              name="colors"
+              type="text"
+              placeholder="e.g. Black, gold and white"
+            >
+          </div>
 
-              <label for="websiteBusinessType">Business type</label>
-              <input id="websiteBusinessType" type="text" placeholder="e.g. Restaurant, hotel, fashion store">
+          <div class="website-field">
+            <label for="websiteReference">Reference website (optional)</label>
+            <input
+              id="websiteReference"
+              name="reference"
+              type="url"
+              placeholder="https://example.com"
+            >
+            <small class="website-field-hint">
+              Enter a website whose general design direction you like.
+            </small>
+          </div>
 
-              <label for="websiteDescription">Describe your website</label>
-              <textarea id="websiteDescription" rows="4" placeholder="Explain what the business does and what the website should achieve."></textarea>
+          <div class="website-form-divider"></div>
 
-              <label for="websiteAudience">Target audience</label>
-              <input id="websiteAudience" type="text" placeholder="Who should visit this website?">
+          <!-- DEVELOPMENT SCOPE -->
+          <div class="website-card-heading">
+            <div>
+              <span class="website-step-label">STEP 03</span>
+              <h2>Development requirements</h2>
+              <p class="muted-text">Choose what the finished project should eventually support.</p>
+            </div>
+          </div>
 
-              <label for="websiteFeatures">Features required</label>
-              <textarea id="websiteFeatures" rows="3" placeholder="e.g. Contact form, product catalogue, booking system"></textarea>
+          <div class="website-field">
+            <label for="websiteBuildScope">Website development scope</label>
+            <select id="websiteBuildScope" name="buildScope">
+              <option value="Professional frontend website">Professional frontend website</option>
+              <option value="Frontend prepared for backend integration">Frontend prepared for backend integration</option>
+              <option value="Full-stack website with backend">Full-stack website with backend</option>
+            </select>
+            <small class="website-field-hint">
+              Full-stack features require backend services and integrations beyond the current frontend generator.
+            </small>
+          </div>
 
-              <label for="websiteStyle">Design style</label>
-              <select id="websiteStyle">
-                <option value="Modern and professional">Modern and professional</option>
-                <option value="Luxury and elegant">Luxury and elegant</option>
-                <option value="Minimal and clean">Minimal and clean</option>
-                <option value="Bold and creative">Bold and creative</option>
-                <option value="Colorful and playful">Colorful and playful</option>
-              </select>
+          <div class="website-field">
+            <label for="websiteBackendFeatures">Backend functionality needed</label>
+            <textarea
+              id="websiteBackendFeatures"
+              name="backendFeatures"
+              rows="4"
+              placeholder="e.g. User accounts, admin dashboard, database, bookings, orders, inventory..."
+            ></textarea>
+          </div>
 
-              <label for="websiteColors">Preferred colours</label>
-              <input id="websiteColors" type="text" placeholder="e.g. Black and gold">
+          <div class="website-field">
+            <label for="websiteBusinessContact">Business contact details (optional)</label>
+            <input
+              id="websiteBusinessContact"
+              name="businessContact"
+              type="text"
+              placeholder="Business email, phone or WhatsApp number"
+            >
+          </div>
 
-              <div id="websiteBuilderStatus" class="feedback-message">
-                Your website creation workspace is being set up.
+          <!-- GENERATION ACTION -->
+          <div class="website-generation-area">
+            <div id="websiteBuilderStatus" class="feedback-message" aria-live="polite">
+              Your website studio is ready. Complete the required project details to begin.
+            </div>
+
+            <button
+              id="generateWebsiteButton"
+              class="primary-button website-generate-button"
+              type="submit"
+            >
+              <span>✦</span>
+              Generate professional website
+            </button>
+
+            <p class="website-security-note">
+              <span>◆</span>
+              Your project details will be sent to the Joseph AI website generator.
+            </p>
+          </div>
+
+        </form>
+      </div>
+
+      <!-- PREVIEW AND PROJECT TOOLS -->
+      <div class="website-output-column">
+
+        <div class="workspace-card website-preview-card">
+
+          <div class="website-card-heading website-preview-heading">
+            <div>
+              <span class="website-step-label">LIVE WORKSPACE</span>
+              <h2>Website preview</h2>
+              <p class="muted-text">Inspect your generated website here.</p>
+            </div>
+            <span class="website-preview-status">
+              <span></span> Preview
+            </span>
+          </div>
+
+          <div class="website-browser-frame">
+            <div class="website-browser-toolbar">
+              <div class="website-browser-dots">
+                <span></span><span></span><span></span>
+              </div>
+              <div class="website-browser-address">Your website preview</div>
+            </div>
+
+            <div id="websitePreviewContainer" class="builder-preview-placeholder">
+              <div class="website-empty-preview">
+                <div class="website-empty-preview-icon">⌘</div>
+                <h3>Your website will appear here</h3>
+                <p>
+                  Complete your project details and generate your first website.
+                  The preview will be displayed in this workspace.
+                </p>
               </div>
             </div>
           </div>
 
-          <div class="workspace-card">
-            <h3>Website preview</h3>
-            <p class="muted-text">Your generated website preview will appear here.</p>
-            <div id="websitePreviewContainer" class="builder-preview-placeholder">
-              Your website preview will appear here.
-            </div>
+          <div class="website-preview-actions">
+            <button id="websiteDesktopPreviewButton" class="website-secondary-button" type="button" disabled>
+              Desktop
+            </button>
+            <button id="websiteMobilePreviewButton" class="website-secondary-button" type="button" disabled>
+              Mobile
+            </button>
           </div>
         </div>
-      </section>
 
+        <!-- GENERATED FILES -->
+        <div class="workspace-card website-files-card">
+          <div class="website-card-heading">
+            <div>
+              <span class="website-step-label">PROJECT OUTPUT</span>
+              <h2>Generated files</h2>
+              <p class="muted-text">Your website source files will be listed here.</p>
+            </div>
+            <span class="website-card-icon">▤</span>
+          </div>
+
+          <div id="websiteGeneratedFiles" class="website-generated-files">
+            <div class="website-file-row">
+              <span class="website-file-icon html">H</span>
+              <span>
+                <strong>index.html</strong>
+                <small>Website structure</small>
+              </span>
+              <span class="website-file-state">Waiting</span>
+            </div>
+
+            <div class="website-file-row">
+              <span class="website-file-icon css">C</span>
+              <span>
+                <strong>style.css</strong>
+                <small>Visual design and layout</small>
+              </span>
+              <span class="website-file-state">Waiting</span>
+            </div>
+
+            <div class="website-file-row">
+              <span class="website-file-icon js">J</span>
+              <span>
+                <strong>script.js</strong>
+                <small>Website interactions</small>
+              </span>
+              <span class="website-file-state">Waiting</span>
+            </div>
+          </div>
+
+          <div class="website-file-actions">
+            <button id="downloadWebsiteButton" class="website-secondary-button" type="button" disabled>
+              ↓ Download website
+            </button>
+            <button id="saveWebsiteProjectButton" class="website-secondary-button" type="button" disabled>
+              Save project
+            </button>
+          </div>
+        </div>
+
+        <!-- FUTURE DEPLOYMENT -->
+        <div class="workspace-card website-deployment-card">
+          <div class="website-card-heading">
+            <div>
+              <span class="website-step-label">GO LIVE</span>
+              <h2>Website deployment</h2>
+              <p class="muted-text">Prepare your completed project for hosting.</p>
+            </div>
+            <span class="website-card-icon">↗</span>
+          </div>
+
+          <div class="website-deployment-option">
+            <div>
+              <strong>Vercel deployment</strong>
+              <p>Prepare your website for publishing through Vercel.</p>
+            </div>
+            <span class="website-coming-label">Not connected</span>
+          </div>
+
+          <div class="website-deployment-option">
+            <div>
+              <strong>Custom domain</strong>
+              <p>Connect a domain owned by you or your client.</p>
+            </div>
+            <span class="website-coming-label">Later</span>
+          </div>
+
+          <p class="website-deployment-note">
+            Deployment controls will be connected after website generation,
+            file saving and preview are working correctly.
+          </p>
+        </div>
+
+      </div>
+    </div>
+  </div>
+</section>
+      
       <!-- APP BUILDER PAGE -->
       <section class="page-section secondary-page" id="page-app-builder" data-page-section="app-builder">
         <div class="secondary-page-content">
