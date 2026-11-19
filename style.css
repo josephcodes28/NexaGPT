@@ -2032,3 +2032,322 @@ body {
   line-height: 1.6;
   overflow-wrap: anywhere;
 }
+
+/* =========================================
+   JOSEPH AI V2 — NEW WORKSPACE PAGE STYLES
+   Website Builder, App Builder, Game Builder,
+   and Remote Work
+========================================= */
+
+:root {
+  --builder-gold: #c8922e;
+  --builder-gold-light: #e5b95f;
+  --builder-bg: #101114;
+  --builder-panel: #181a20;
+  --builder-panel-light: #20232b;
+  --builder-border: rgba(255,255,255,0.09);
+  --builder-muted: #9a9da8;
+}
+
+/* SHARED PAGE LAYOUT */
+
+#page-website-builder,
+#page-app-builder,
+#page-game-builder,
+#page-remote-work {
+  width: 100%;
+  min-width: 0;
+}
+
+#page-website-builder .secondary-page-content,
+#page-app-builder .secondary-page-content,
+#page-game-builder .secondary-page-content,
+#page-remote-work .secondary-page-content {
+  width: 100%;
+  max-width: 1150px;
+  margin: 0 auto;
+  padding: 24px;
+}
+
+#page-website-builder .page-heading,
+#page-app-builder .page-heading,
+#page-game-builder .page-heading,
+#page-remote-work .page-heading {
+  display: flex;
+  align-items: center;
+  gap: 15px;
+  margin-bottom: 25px;
+}
+
+#page-website-builder .page-heading h1,
+#page-app-builder .page-heading h1,
+#page-game-builder .page-heading h1,
+#page-remote-work .page-heading h1 {
+  color: #fff;
+  font-size: clamp(23px, 4vw, 30px);
+  font-weight: 750;
+  margin: 0 0 7px;
+}
+
+#page-website-builder .page-heading p,
+#page-app-builder .page-heading p,
+#page-game-builder .page-heading p,
+#page-remote-work .page-heading p {
+  color: var(--builder-muted);
+  font-size: 14px;
+  line-height: 1.6;
+  margin: 0;
+}
+
+#page-website-builder .page-heading-icon,
+#page-app-builder .page-heading-icon,
+#page-game-builder .page-heading-icon,
+#page-remote-work .page-heading-icon {
+  width: 48px;
+  height: 48px;
+  flex-shrink: 0;
+  display: grid;
+  place-items: center;
+  border-radius: 14px;
+  color: var(--builder-gold-light);
+  background: rgba(200,146,46,0.12);
+  border: 1px solid rgba(200,146,46,0.25);
+  font-size: 23px;
+}
+
+/* BUILDER PANELS */
+
+#page-website-builder .builder-card,
+#page-app-builder .builder-card,
+#page-game-builder .builder-card,
+#page-remote-work .builder-card,
+#page-website-builder .form-card,
+#page-app-builder .form-card,
+#page-game-builder .form-card,
+#page-remote-work .form-card {
+  background: var(--builder-panel);
+  border: 1px solid var(--builder-border);
+  border-radius: 17px;
+  padding: 20px;
+  margin-bottom: 20px;
+}
+
+#page-website-builder h2,
+#page-app-builder h2,
+#page-game-builder h2,
+#page-remote-work h2 {
+  color: #fff;
+  font-size: 18px;
+  margin: 0 0 15px;
+}
+
+#page-website-builder label,
+#page-app-builder label,
+#page-game-builder label,
+#page-remote-work label {
+  display: block;
+  color: #d5d6dc;
+  font-size: 13px;
+  font-weight: 600;
+  margin: 15px 0 8px;
+}
+
+/* INPUTS */
+
+#page-website-builder input,
+#page-website-builder select,
+#page-website-builder textarea,
+#page-app-builder input,
+#page-app-builder select,
+#page-app-builder textarea,
+#page-game-builder input,
+#page-game-builder select,
+#page-game-builder textarea,
+#page-remote-work input,
+#page-remote-work select,
+#page-remote-work textarea {
+  width: 100%;
+  min-width: 0;
+  min-height: 46px;
+  padding: 12px 14px;
+  color: #f5f5f7;
+  background: #111318;
+  border: 1px solid var(--builder-border);
+  border-radius: 10px;
+  outline: none;
+  font: inherit;
+  font-size: 14px;
+  transition: border-color .2s, box-shadow .2s;
+}
+
+#page-website-builder textarea,
+#page-app-builder textarea,
+#page-game-builder textarea,
+#page-remote-work textarea {
+  min-height: 110px;
+  resize: vertical;
+}
+
+#page-website-builder input:focus,
+#page-website-builder select:focus,
+#page-website-builder textarea:focus,
+#page-app-builder input:focus,
+#page-app-builder select:focus,
+#page-app-builder textarea:focus,
+#page-game-builder input:focus,
+#page-game-builder select:focus,
+#page-game-builder textarea:focus,
+#page-remote-work input:focus,
+#page-remote-work select:focus,
+#page-remote-work textarea:focus {
+  border-color: var(--builder-gold);
+  box-shadow: 0 0 0 3px rgba(200,146,46,0.12);
+}
+
+#page-website-builder input::placeholder,
+#page-app-builder input::placeholder,
+#page-game-builder input::placeholder,
+#page-remote-work input::placeholder,
+#page-website-builder textarea::placeholder,
+#page-app-builder textarea::placeholder,
+#page-game-builder textarea::placeholder,
+#page-remote-work textarea::placeholder {
+  color: #747782;
+}
+
+/* BUILDER BUTTONS */
+
+#page-website-builder button,
+#page-app-builder button,
+#page-game-builder button,
+#page-remote-work button {
+  cursor: pointer;
+  transition: transform .2s, background .2s, border-color .2s;
+}
+
+#page-website-builder button:hover,
+#page-app-builder button:hover,
+#page-game-builder button:hover,
+#page-remote-work button:hover {
+  transform: translateY(-1px);
+}
+
+#page-website-builder .primary-button,
+#page-app-builder .primary-button,
+#page-game-builder .primary-button,
+#page-remote-work .primary-button {
+  min-height: 46px;
+  padding: 12px 20px;
+  border: 0;
+  border-radius: 10px;
+  color: #17120a;
+  background: linear-gradient(135deg, #e2b65b, #b77c1e);
+  font-weight: 750;
+  font-size: 14px;
+}
+
+/* WEBSITE BUILDER */
+
+#page-website-builder #websitePreviewContainer {
+  width: 100%;
+  min-height: 260px;
+  overflow: hidden;
+  margin-top: 18px;
+  border: 1px solid var(--builder-border);
+  border-radius: 14px;
+  background: #f5f5f5;
+  color: #171717;
+}
+
+#page-website-builder #websiteBuilderStatus,
+#page-remote-work #remoteWorkStatus {
+  padding: 12px 14px;
+  margin: 15px 0;
+  border-radius: 10px;
+  background: rgba(200,146,46,0.09);
+  border: 1px solid rgba(200,146,46,0.2);
+  color: var(--builder-gold-light);
+  font-size: 13px;
+  line-height: 1.5;
+}
+
+/* REMOTE WORK */
+
+#page-remote-work #remoteJobResults {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 15px;
+  margin-top: 20px;
+}
+
+#page-remote-work #remoteJobResults > * {
+  min-width: 0;
+  padding: 17px;
+  background: var(--builder-panel);
+  border: 1px solid var(--builder-border);
+  border-radius: 14px;
+}
+
+#page-remote-work #remoteJobResults h3 {
+  color: #fff;
+  font-size: 16px;
+  line-height: 1.4;
+}
+
+#page-remote-work #remoteJobResults p {
+  color: var(--builder-muted);
+  font-size: 13px;
+  line-height: 1.6;
+}
+
+/* APP AND GAME BUILDER PAGE BACKGROUNDS */
+
+#page-app-builder,
+#page-game-builder {
+  min-height: 400px;
+}
+
+#page-app-builder .builder-card,
+#page-game-builder .builder-card {
+  background:
+    radial-gradient(
+      circle at top right,
+      rgba(200,146,46,0.10),
+      transparent 45%
+    ),
+    var(--builder-panel);
+}
+
+/* RESPONSIVE DESIGN */
+
+@media (max-width: 700px) {
+  #page-website-builder .secondary-page-content,
+  #page-app-builder .secondary-page-content,
+  #page-game-builder .secondary-page-content,
+  #page-remote-work .secondary-page-content {
+    padding: 17px 13px;
+  }
+
+  #page-website-builder .builder-card,
+  #page-app-builder .builder-card,
+  #page-game-builder .builder-card,
+  #page-remote-work .builder-card,
+  #page-website-builder .form-card,
+  #page-app-builder .form-card,
+  #page-game-builder .form-card,
+  #page-remote-work .form-card {
+    padding: 15px;
+    border-radius: 13px;
+  }
+
+  #page-remote-work #remoteJobResults {
+    grid-template-columns: 1fr;
+  }
+
+  #page-website-builder .page-heading,
+  #page-app-builder .page-heading,
+  #page-game-builder .page-heading,
+  #page-remote-work .page-heading {
+    align-items: flex-start;
+  }
+}
