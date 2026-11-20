@@ -38,20 +38,26 @@ function cleanGeneratedText(value) {
     .trim();
 }
 
+/*
+ * Correct AI responses that contain escaped line breaks
+ * throughout a source file instead of actual line breaks.
+ *
+ * Avoid changing normal JavaScript strings unnecessarily.
+ */
 function normalizeGeneratedCode(value) {
   if (typeof value !== "string") return "";
 
   const escapedNewlines = (value.match(/\\n/g) || []).length;
   const actualNewlines = (value.match(/\n/g) || []).length;
 
-  // Correct AI output that contains literal "\n"
-  // instead of real line breaks.
-  if (escapedNewlines >= 3 && actualNewlines === 0) {
+  if (
+    escapedNewlines >= 3 &&
+    escapedNewlines > actualNewlines * 2
+  ) {
     return value
       .replace(/\\r\\n/g, "\n")
       .replace(/\\n/g, "\n")
-      .replace(/\\r/g, "\n")
-      .replace(/\\t/g, "  ");
+      .replace(/\\r/g, "\n");
   }
 
   return value;
@@ -76,7 +82,6 @@ function extractJSON(text) {
   }
 }
 
-
 function validateFiles(data) {
   if (!data || typeof data !== "object") {
     throw new Error("The AI returned an invalid website response.");
@@ -98,7 +103,7 @@ function validateFiles(data) {
 
   if (!html || !css || !js) {
     throw new Error(
-      "The AI did not generate all three website files. Please try again."
+      "The AI did not generate all three website files."
     );
   }
 
@@ -108,28 +113,39 @@ function validateFiles(data) {
     js.length > MAX_FILE_LENGTH
   ) {
     throw new Error(
-      "The generated website is too large. Please try a shorter description."
+      "The generated website is too large. Please shorten the project description."
     );
   }
 
-  if (!/<html[\s>]/i.test(html) && !/<!doctype html/i.test(html)) {
-    throw new Error("The generated HTML file is incomplete.");
+  if (
+    !/<html[\s>]/i.test(html) &&
+    !/<!doctype html/i.test(html)
+  ) {
+    throw new Error("The generated HTML document is incomplete.");
+  }
+
+  if (!/<\/html\s*>/i.test(html)) {
+    throw new Error("The generated HTML document is missing its closing tag.");
   }
 
   return { html, css, js };
-}  
+}
+
+/* ---------------- GENERATION PROMPT ---------------- */
 
 function buildPrompt(briefText) {
   return `
 You are Joseph AI's professional website development engine.
 
-Create a complete, polished, modern, responsive FRONTEND website using the project details below.
+Your job is to create a polished, complete and responsive website
+suitable for a real paying client.
 
 PROJECT DETAILS:
 ${briefText}
 
-YOUR TASK:
-Return exactly one valid JSON object with these three string properties:
+OUTPUT FORMAT:
+
+Return exactly one valid JSON object with these three properties:
 
 {
   "html": "Complete HTML document",
@@ -137,56 +153,122 @@ Return exactly one valid JSON object with these three string properties:
   "js": "Complete JavaScript file"
 }
 
-WEBSITE QUALITY REQUIREMENTS:
+All three properties must contain complete source code.
 
-1. Build a professional website suitable for a real paying client.
-2. Create a strong visual identity based on the requested business, style and colours.
-3. Use polished spacing, typography, visual hierarchy, attractive sections, buttons, cards and navigation.
-4. Make the first screen especially attractive, with a strong headline and useful call to action.
-5. Make the website responsive on mobile, tablet and desktop.
-6. Use semantic HTML and accessible labels, keyboard-friendly controls and sensible contrast.
-7. Include the requested sections and features wherever possible.
-8. Implement working frontend interactions using vanilla JavaScript.
-9. Make mobile navigation work.
-10. Add hover, focus and active states.
-11. Use tasteful CSS effects and animations.
-12. Use relevant public image URLs only when needed. Never invent local image paths.
-13. Do not use external JavaScript libraries or frameworks.
-14. Do not include tracking, hidden data collection or malicious code.
-15. Never invent phone numbers, email addresses, addresses, reviews, awards or factual claims.
-16. Use clearly labelled editable placeholders for missing business information.
-17. Never pretend that payments, registration, database storage, bookings or order processing work without real backend integrations.
-18. Keep all code complete, readable and organized.
-19. Avoid generic templates. Match the design to the actual business.
-20. Make every visible frontend control work where possible.
+GENERAL DESIGN REQUIREMENTS:
+
+1. Build a professional website that matches the actual business.
+2. Do not produce a generic or unfinished template.
+3. Create a distinctive visual identity using the requested colours and style.
+4. Use polished typography, spacing, layout, cards, buttons and visual hierarchy.
+5. Make the first screen attractive and give it a clear headline and call to action.
+6. Make the website work on mobile phones, tablets and desktop screens.
+7. Use semantic HTML and accessible labels.
+8. Include the sections and features requested by the user.
+9. Use tasteful animations and useful hover and focus states.
+10. Use vanilla JavaScript only.
+11. Do not include hidden tracking, analytics or malicious code.
+12. Do not invent business contact details, addresses, reviews, awards or factual claims.
+13. Use clearly labelled placeholders when information is missing.
+14. Do not pretend that a frontend-only feature has a working backend.
+
+IMPORTANT NAVIGATION REQUIREMENTS:
+
+1. Every internal navigation link must use a section ID.
+2. Examples:
+   href="#home"
+   href="#about"
+   href="#menu"
+   href="#gallery"
+   href="#contact"
+
+3. Every internal link must point to an element that actually exists.
+4. Do not use "/" or the website root for internal navigation.
+5. Do not use links that point to Joseph AI or another unrelated website.
+6. Do not use JavaScript to navigate the parent window.
+7. Do not use window.top, window.parent or parent.document.
+8. Internal navigation must stay within the generated website.
+9. Add smooth scrolling where appropriate.
+10. Mobile navigation must open and close correctly.
+11. Mobile navigation must close after a navigation link is selected.
+12. Ensure the mobile menu button has a working click handler and correct aria-expanded state.
+
+IMAGE REQUIREMENTS:
+
+1. Use relevant, direct image URLs from reliable public image sources.
+2. Prefer stable images hosted on images.unsplash.com when appropriate.
+3. Do not use source.unsplash.com or random image-search endpoints.
+4. Do not invent image URLs.
+5. Do not use broken local image paths.
+6. Every image must have meaningful alt text.
+7. Add sensible width, height and object-fit styling.
+8. Add an image error handler or fallback presentation so a failed image does not leave a broken-image icon.
+9. Gallery images must have consistent sizing and responsive layouts.
+10. Do not let an image error break the rest of the website.
 
 HTML REQUIREMENTS:
-- Complete HTML5 document.
-- Include viewport and useful SEO metadata.
-- Link to style.css.
-- Load script.js near the end of the body.
-- Do not put all CSS or JavaScript inside the HTML.
-- Do not use Markdown fences.
+
+1. Return a complete HTML5 document.
+2. Include charset, viewport and useful SEO metadata.
+3. Link to style.css.
+4. Load script.js near the end of the body.
+5. Use unique IDs for all page sections.
+6. Ensure every button has an appropriate type.
+7. Ensure all navigation targets exist.
+8. Do not place the entire stylesheet or JavaScript inside the HTML.
+9. Do not include scripts that load Joseph AI or unrelated application files.
+10. Do not include absolute links to the Joseph AI application.
 
 CSS REQUIREMENTS:
-- Complete stylesheet.
-- Responsive breakpoints.
-- Finished visual styling.
-- Mobile-first layout where appropriate.
+
+1. Return a complete stylesheet.
+2. Include mobile and desktop responsive breakpoints.
+3. Style every section and visible control.
+4. Ensure gallery images use aspect-ratio and object-fit correctly.
+5. Include visible keyboard focus states.
+6. Avoid unfinished or unstyled sections.
+7. Avoid hiding the entire page with opacity or animation.
+8. Respect reduced-motion preferences.
 
 JAVASCRIPT REQUIREMENTS:
-- Complete JavaScript file.
-- Vanilla JavaScript only.
-- Avoid errors when optional elements are absent.
-- Do not invent backend functionality.
 
-OUTPUT RULES:
-- Return only valid JSON.
-- Include all three properties: html, css and js.
-- All three properties must contain complete code strings.
-- Do not add explanations outside the JSON.
+1. Return a complete JavaScript file.
+2. Use vanilla JavaScript only.
+3. Wait for DOMContentLoaded when necessary.
+4. Check that optional elements exist before attaching event listeners.
+5. Implement mobile navigation.
+6. Implement internal section navigation without leaving the generated website.
+7. Implement gallery interactions only when gallery elements exist.
+8. Never access or modify the parent Joseph AI application.
+9. Never use window.top or window.parent.
+10. Do not claim that forms have been sent or saved when there is no backend.
+11. Frontend-only forms must clearly explain that they are demonstrations or provide an honest contact alternative.
+12. Every visible interactive control must have a meaningful action.
+
+SECURITY AND QUALITY:
+
+- No hidden data collection.
+- No fake payment processing.
+- No fake login.
+- No fake database.
+- No fake order confirmation.
+- No fake contact-message delivery.
+- No unrelated external scripts.
+- No broken navigation links.
+- No placeholder buttons pretending to work.
+
+FINAL OUTPUT:
+
+Return only valid JSON.
+Include exactly the three string properties:
+html, css and js.
+
+Do not include Markdown fences.
+Do not include explanations outside the JSON.
 `;
 }
+
+/* ---------------- PROVIDER REQUEST HELPER ---------------- */
 
 async function fetchJSON(url, options, timeoutMs) {
   const controller = new AbortController();
@@ -208,7 +290,7 @@ async function fetchJSON(url, options, timeoutMs) {
       data = await response.json();
     } catch {
       throw new Error(
-        `Provider returned an unreadable response (HTTP ${response.status}).`
+        "Provider returned an unreadable response."
       );
     }
 
@@ -219,7 +301,7 @@ async function fetchJSON(url, options, timeoutMs) {
         `Provider returned HTTP ${response.status}.`;
 
       throw new Error(
-        `HTTP ${response.status}: ${String(message).slice(0, 500)}`
+        `HTTP ${response.status}: ${String(message).slice(0, 400)}`
       );
     }
 
@@ -271,7 +353,7 @@ async function generateWithGemini(prompt) {
           }
         ],
         generationConfig: {
-          temperature: 0.7,
+          temperature: 0.65,
           responseMimeType: "application/json",
           maxOutputTokens: 12000
         }
@@ -330,14 +412,14 @@ async function generateWithGroq(prompt) {
           {
             role: "system",
             content:
-              "You are Joseph AI's professional website development engine. Generate complete website files. Return only valid JSON with html, css and js string properties."
+              "You are Joseph AI's professional website development engine. Return only valid JSON with complete html, css and js string properties. Follow every navigation, image, accessibility and security requirement in the user's prompt."
           },
           {
             role: "user",
             content: prompt
           }
         ],
-        temperature: 0.7,
+        temperature: 0.65,
         max_completion_tokens: 12000,
         response_format: {
           type: "json_object"
@@ -435,7 +517,7 @@ export default async function handler(req, res) {
   let primaryError = null;
   let backupError = null;
 
-  // Try Gemini first when its key is available.
+  // Try Gemini first.
   if (geminiKey) {
     try {
       const result = await generateWithGemini(prompt);
@@ -450,8 +532,9 @@ export default async function handler(req, res) {
         files: result.files,
         provider: result.provider,
         model: result.model,
+        fallbackUsed: false,
         note:
-          "Frontend website files generated successfully. Real database, login, payment and order services require separate backend integrations."
+          "Frontend files generated. Real database, login, payment and order services require separate backend integrations."
       });
 
     } catch (error) {
@@ -470,7 +553,7 @@ export default async function handler(req, res) {
   if (groqKey) {
     try {
       console.log(
-        "Gemini unavailable. Switching to Groq Website Builder."
+        "Gemini unavailable. Switching to Groq."
       );
 
       const result = await generateWithGroq(prompt);
@@ -487,7 +570,7 @@ export default async function handler(req, res) {
         model: result.model,
         fallbackUsed: true,
         note:
-          "Gemini was unavailable, so Groq generated the website instead. These are frontend files; real backend services require separate integrations."
+          "Gemini was unavailable, so Groq generated the website. Real backend services require separate integrations."
       });
 
     } catch (error) {
@@ -511,5 +594,5 @@ export default async function handler(req, res) {
       groq: backupError
     }
   });
-      }
-      
+    }
+          
