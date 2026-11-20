@@ -186,88 +186,110 @@
    * External links, WhatsApp, phone and email links remain usable.
    */
 
-  function buildPreviewGuardScript() {
-    return `
+  
+function buildPreviewGuardScript() {
+  const parentOrigin = JSON.stringify(window.location.origin);
+
+  return `
 (function () {
   "use strict";
 
-  function isExternalDestination(url) {
-    return (
-      url.protocol === "http:" ||
-      url.protocol === "https:" ||
-      url.protocol === "mailto:" ||
-      url.protocol === "tel:" ||
-      url.protocol === "sms:"
-    );
-  }
+  const JOSEPH_AI_ORIGIN = ${parentOrigin};
 
   document.addEventListener("click", function (event) {
-    var link = event.target.closest
+    const link = event.target.closest
       ? event.target.closest("a")
       : null;
 
     if (!link) return;
 
-    var rawHref = link.getAttribute("href");
+    const href = (link.getAttribute("href") || "").trim();
 
-    if (!rawHref) return;
+    if (!href) return;
 
-    var href = rawHref.trim();
+    // Keep section navigation inside the generated website.
+    if (href.startsWith("#")) {
+      event.preventDefault();
 
-    if (
-      href.startsWith("#") ||
-      href.startsWith("mailto:") ||
-      href.startsWith("tel:") ||
-      href.startsWith("sms:") ||
-      href.startsWith("javascript:")
-    ) {
+      const id = href.slice(1);
+
+      if (!id) {
+        window.scrollTo({ top: 0, behavior: "smooth" });
+        return;
+      }
+
+      let decodedId = id;
+
+      try {
+        decodedId = decodeURIComponent(id);
+      } catch (_) {}
+
+      const target = document.getElementById(decodedId);
+
+      if (target) {
+        target.scrollIntoView({
+          behavior: "smooth",
+          block: "start"
+        });
+      }
+
       return;
     }
 
-    var destination;
+    // Allow WhatsApp, phone, email and SMS links.
+    if (/^(mailto:|tel:|sms:)/i.test(href)) {
+      return;
+    }
+
+    // Never allow JavaScript or other unsafe link schemes.
+    if (/^(javascript:|data:|file:|blob:)/i.test(href)) {
+      event.preventDefault();
+      event.stopImmediatePropagation();
+      return;
+    }
+
+    let destination;
 
     try {
       destination = new URL(href, document.baseURI);
     } catch (_) {
       event.preventDefault();
+      event.stopImmediatePropagation();
       return;
     }
 
-    if (isExternalDestination(destination)) {
-      return;
+    // Block navigation back into Joseph AI itself.
+    if (
+      destination.origin === JOSEPH_AI_ORIGIN ||
+      !["http:", "https:"].includes(destination.protocol)
+    ) {
+      event.preventDefault();
+      event.stopImmediatePropagation();
+
+      console.warn(
+        "Joseph AI Preview blocked navigation:",
+        href
+      );
     }
-
-    // Prevent internal paths from loading Joseph AI in the preview.
-    event.preventDefault();
-    event.stopImmediatePropagation();
-
-    console.warn(
-      "Joseph AI Preview blocked an internal page navigation:",
-      href
-    );
   }, true);
 
-  // Prevent forms from accidentally submitting to Joseph AI routes.
+  // Keep forms from navigating into Joseph AI.
   document.addEventListener("submit", function (event) {
-    var form = event.target;
+    const form = event.target;
 
     if (!(form instanceof HTMLFormElement)) return;
 
-    var action = form.getAttribute("action");
+    const action = form.getAttribute("action");
 
-    if (!action || action === "#" || action.startsWith("#")) {
+    if (!action || action.startsWith("#")) {
       event.preventDefault();
       return;
     }
 
     try {
-      var destination = new URL(action, document.baseURI);
+      const destination = new URL(action, document.baseURI);
 
-      if (
-        destination.protocol !== "http:" &&
-        destination.protocol !== "https:" &&
-        destination.protocol !== "mailto:"
-      ) {
+      if (destination.origin === JOSEPH_AI_ORIGIN) {
         event.preventDefault();
       }
     } catch (_) {
@@ -275,47 +297,46 @@
     }
   }, true);
 
-  // Replace broken images with attractive visual placeholders.
+  // Handle broken images gracefully.
   document.addEventListener("error", function (event) {
-    var image = event.target;
+    const img = event.target;
 
-    if (!(image instanceof HTMLImageElement)) return;
+    if (!(img instanceof HTMLImageElement)) return;
 
-    image.style.opacity = "0";
-    image.style.pointerEvents = "none";
+    img.style.display = "none";
 
-    var wrapper = image.parentElement;
+    const wrapper = img.parentElement;
 
-    if (wrapper) {
-      wrapper.style.background =
-        "linear-gradient(135deg, #292929, #51402b)";
-      wrapper.style.minHeight =
-        wrapper.style.minHeight || "140px";
-      wrapper.style.position =
-        wrapper.style.position || "relative";
+    if (!wrapper) return;
 
-      if (!wrapper.querySelector(".joseph-image-fallback")) {
-        var fallback = document.createElement("div");
+    wrapper.style.background =
+      "linear-gradient(135deg, #292929, #51402b)";
 
-        fallback.className = "joseph-image-fallback";
-        fallback.textContent =
-          image.alt || "Image unavailable";
+    wrapper.style.minHeight =
+      wrapper.style.minHeight || "140px";
 
-        fallback.style.cssText =
-          "position:absolute;inset:0;display:flex;" +
-          "align-items:center;justify-content:center;" +
-          "padding:16px;text-align:center;" +
-          "color:#f1dfbd;font-size:13px;" +
-          "background:linear-gradient(135deg,#292929,#51402b);";
+    wrapper.style.position =
+      wrapper.style.position || "relative";
 
-        wrapper.appendChild(fallback);
-      }
+    if (!wrapper.querySelector(".joseph-image-fallback")) {
+      const fallback = document.createElement("div");
+
+      fallback.className = "joseph-image-fallback";
+      fallback.textContent = img.alt || "Image unavailable";
+
+      fallback.style.cssText =
+        "position:absolute;inset:0;display:flex;" +
+        "align-items:center;justify-content:center;" +
+        "padding:16px;text-align:center;" +
+        "color:#f1dfbd;font-size:13px;";
+
+      wrapper.appendChild(fallback);
     }
   }, true);
 
 })();
 `;
-  }
+}
 
   /*
    * Build the complete preview document.
