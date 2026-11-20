@@ -2,16 +2,10 @@
 "use strict";
 
 /*
- * JOSEPH AI V2 — WEBSITE STUDIO CONNECTION
+ * JOSEPH AI V2 — WEBSITE STUDIO
+ * Preview and generation controller
  *
- * Connects:
- * - Website Builder form
- * - /api/website generation endpoint
- * - Live website preview
- * - Generated HTML, CSS and JS display
- * - Individual file downloads and Download Website button
- *
- * This module does not modify the main Assistant controller.
+ * Keeps generated websites isolated from Joseph AI.
  */
 
 (() => {
@@ -20,9 +14,8 @@
 
   const state = {
     files: null,
-    projectName: "Joseph AI Website",
-    previewMode: "desktop",
-    generating: false
+    generating: false,
+    previewMode: "desktop"
   };
 
   const $ = (selector) => document.querySelector(selector);
@@ -32,13 +25,15 @@
   const generateButton = $("#generateWebsiteButton");
   const previewContainer = $("#websitePreviewContainer");
   const filesContainer = $("#websiteGeneratedFiles");
+
   const desktopButton = $("#websiteDesktopPreviewButton");
   const mobileButton = $("#websiteMobilePreviewButton");
   const downloadButton = $("#downloadWebsiteButton");
   const saveButton = $("#saveWebsiteProjectButton");
 
-  if (!form || !status || !generateButton || !previewContainer || !filesContainer) {
-    console.error("Website Studio: Required HTML elements were not found.");
+  if (!form || !status || !generateButton ||
+      !previewContainer || !filesContainer) {
+    console.error("Website Studio: Required elements are missing.");
     return;
   }
 
@@ -49,53 +44,54 @@
     status.setAttribute("aria-live", "polite");
   }
 
-  function getFieldValue(name) {
-    const field = form.elements.namedItem(name);
-    return field && typeof field.value === "string"
-      ? field.value.trim()
+  function field(name) {
+    const element = form.elements.namedItem(name);
+    return element && typeof element.value === "string"
+      ? element.value.trim()
       : "";
   }
 
   function collectBrief() {
     return {
-      projectName: getFieldValue("projectName"),
-      businessType: getFieldValue("businessType"),
-      description: getFieldValue("description"),
-      audience: getFieldValue("audience"),
-      features: getFieldValue("features"),
-      visualStyle: getFieldValue("visualStyle"),
-      colors: getFieldValue("colors"),
-      reference: getFieldValue("reference"),
-      buildScope: getFieldValue("buildScope"),
-      backendFeatures: getFieldValue("backendFeatures"),
-      businessContact: getFieldValue("businessContact")
+      projectName: field("projectName"),
+      businessType: field("businessType"),
+      description: field("description"),
+      audience: field("audience"),
+      features: field("features"),
+      visualStyle: field("visualStyle"),
+      colors: field("colors"),
+      reference: field("reference"),
+      buildScope: field("buildScope"),
+      backendFeatures: field("backendFeatures"),
+      businessContact: field("businessContact")
     };
   }
 
-  function setGenerating(isGenerating) {
-    state.generating = isGenerating;
-    generateButton.disabled = isGenerating;
-    generateButton.textContent = isGenerating
+  function setGenerating(value) {
+    state.generating = value;
+    generateButton.disabled = value;
+    generateButton.textContent = value
       ? "Generating your website..."
       : "Generate professional website";
   }
 
-  function validateGeneratedFiles(files) {
+  function validateFiles(files) {
     if (!files || typeof files !== "object") {
-      throw new Error("The server returned an invalid response.");
+      throw new Error("The server returned invalid website files.");
     }
 
-    for (const key of ["html", "css", "js"]) {
-      if (typeof files[key] !== "string" || !files[key].trim()) {
-        throw new Error(`The generated ${key.toUpperCase()} file is missing.`);
+    for (const name of ["html", "css", "js"]) {
+      if (typeof files[name] !== "string" || !files[name].trim()) {
+        throw new Error(`The generated ${name} file is missing.`);
       }
     }
 
     return files;
   }
 
-  async function generateWebsite(brief) {
+  async function requestWebsite(brief) {
     const controller = new AbortController();
+
     const timeoutId = setTimeout(
       () => controller.abort(),
       REQUEST_TIMEOUT
@@ -125,14 +121,13 @@
 
       if (!response.ok || !result.success) {
         throw new Error(
-          result.error || "Website generation failed. Please try again."
+          result.error || "Website generation failed."
         );
       }
 
-      const files = validateGeneratedFiles(result.files);
-
       return {
-        files,
+        files: validateFiles(result.files),
+        provider: result.provider || "AI",
         model: result.model || "",
         note: result.note || ""
       };
@@ -140,13 +135,13 @@
     } catch (error) {
       if (error.name === "AbortError") {
         throw new Error(
-          "The request took too long. Please try again with a shorter description."
+          "Website generation took too long. Please try again."
         );
       }
 
       if (error instanceof TypeError) {
         throw new Error(
-          "Could not connect to Joseph AI. Check your internet connection and try again."
+          "Could not connect to Joseph AI. Check your internet connection."
         );
       }
 
@@ -157,35 +152,56 @@
     }
   }
 
+  /*
+   * PREVIEW SECURITY AND REPAIR
+   *
+   * Remove the generated website's references to local
+   * style.css and script.js.
+   *
+   * Inject the actual generated CSS and JS instead.
+   * This prevents the preview from loading Joseph AI files.
+   */
+
   function buildPreviewDocument(files) {
     let html = files.html;
 
-    // Remove references to the separate files.
-    // Their contents will be inserted directly into the preview.
+    // Remove generated base tags that could redirect relative links.
+    html = html.replace(/<base\b[^>]*>/gi, "");
+
+    // Remove local stylesheet references.
     html = html.replace(
-      /<link\b(?=[^>]*\bhref\s*=\s*["'][^"']*style\.css(?:\?[^"']*)?["'])[^>]*>/gi,
+      /<link\b(?=[^>]*\bhref\s*=\s*["'](?:\.\/)?style\.css(?:[?#][^"']*)?["'])[^>]*>/gi,
       ""
     );
 
+    // Remove local JavaScript references.
     html = html.replace(
-      /<script\b(?=[^>]*\bsrc\s*=\s*["'][^"']*script\.js(?:\?[^"']*)?["'])[^>]*>\s*<\/script>/gi,
+      /<script\b(?=[^>]*\bsrc\s*=\s*["'](?:\.\/)?script\.js(?:[?#][^"']*)?["'])[^>]*>\s*<\/script\s*>/gi,
       ""
     );
 
-    const safeCSS = files.css.replace(/<\/style/gi, "<\\/style");
-    const safeJS = files.js.replace(/<\/script/gi, "<\\/script");
+    // Prevent accidental loading of Joseph AI's relative assets.
+    // Root-relative URLs are retained because they may be intentional.
+    const css = files.css.replace(/<\/style/gi, "<\\/style");
+    const js = files.js.replace(/<\/script/gi, "<\\/script");
 
-    const styleTag = `<style>${safeCSS}</style>`;
-    const scriptTag = `<script>${safeJS}<\/script>`;
+    const styleTag = `<style>${css}</style>`;
+    const scriptTag = `<script>${js}<\/script>`;
 
-    if (/<\/head>/i.test(html)) {
-      html = html.replace(/<\/head>/i, `${styleTag}</head>`);
+    if (/<\/head\s*>/i.test(html)) {
+      html = html.replace(
+        /<\/head\s*>/i,
+        `${styleTag}</head>`
+      );
     } else {
       html = `${styleTag}${html}`;
     }
 
-    if (/<\/body>/i.test(html)) {
-      html = html.replace(/<\/body>/i, `${scriptTag}</body>`);
+    if (/<\/body\s*>/i.test(html)) {
+      html = html.replace(
+        /<\/body\s*>/i,
+        `${scriptTag}</body>`
+      );
     } else {
       html += scriptTag;
     }
@@ -199,20 +215,39 @@
     previewContainer.replaceChildren();
 
     const frame = document.createElement("iframe");
-    frame.title = "Generated website live preview";
-    frame.setAttribute("sandbox", "allow-scripts");
-    frame.setAttribute("loading", "lazy");
+
+    frame.title = "Generated website preview";
+
+    /*
+     * allow-scripts:
+     * Runs the generated website's JavaScript.
+     *
+     * allow-forms:
+     * Allows frontend forms to work.
+     *
+     * allow-popups:
+     * Allows WhatsApp and external links to open.
+     *
+     * No allow-same-origin:
+     * Keeps the generated site isolated from Joseph AI.
+     */
+    frame.setAttribute(
+      "sandbox",
+      "allow-scripts allow-forms allow-popups allow-popups-to-escape-sandbox allow-modals"
+    );
+
+    frame.setAttribute("loading", "eager");
     frame.setAttribute("referrerpolicy", "no-referrer");
 
     frame.style.display = "block";
-    frame.style.height = "650px";
-    frame.style.border = "1px solid #333";
-    frame.style.borderRadius = "12px";
-    frame.style.background = "#ffffff";
-    frame.style.margin = "0 auto";
+    frame.style.height = "700px";
     frame.style.maxWidth = "100%";
     frame.style.width =
       state.previewMode === "mobile" ? "390px" : "100%";
+    frame.style.margin = "0 auto";
+    frame.style.border = "1px solid #333";
+    frame.style.borderRadius = "12px";
+    frame.style.background = "#ffffff";
 
     frame.srcdoc = buildPreviewDocument(state.files);
 
@@ -233,7 +268,26 @@
     }
   }
 
-  function createFileCard(fileName, content) {
+  function downloadFile(name, content) {
+    const blob = new Blob([content], {
+      type: "text/plain;charset=utf-8"
+    });
+
+    const url = URL.createObjectURL(blob);
+    const link = document.createElement("a");
+
+    link.href = url;
+    link.download = name;
+    link.style.display = "none";
+
+    document.body.appendChild(link);
+    link.click();
+    link.remove();
+
+    setTimeout(() => URL.revokeObjectURL(url), 2000);
+  }
+
+  function createFileCard(name, content) {
     const card = document.createElement("details");
     card.style.margin = "12px 0";
     card.style.padding = "12px";
@@ -241,7 +295,7 @@
     card.style.borderRadius = "10px";
 
     const summary = document.createElement("summary");
-    summary.textContent = fileName;
+    summary.textContent = name;
     summary.style.cursor = "pointer";
     summary.style.fontWeight = "600";
 
@@ -256,16 +310,16 @@
     code.style.background = "#111";
     code.style.borderRadius = "8px";
 
-    const download = document.createElement("button");
-    download.type = "button";
-    download.textContent = `Download ${fileName}`;
-    download.style.marginTop = "10px";
+    const button = document.createElement("button");
+    button.type = "button";
+    button.textContent = `Download ${name}`;
 
-    download.addEventListener("click", () => {
-      downloadFile(fileName, content);
+    button.addEventListener("click", () => {
+      downloadFile(name, content);
     });
 
-    card.append(summary, code, download);
+    card.append(summary, code, button);
+
     return card;
   }
 
@@ -279,39 +333,20 @@
 
     const description = document.createElement("p");
     description.textContent =
-      "Open a file to inspect its code, or download it separately.";
-
-    filesContainer.append(heading, description);
+      "Inspect or download your generated HTML, CSS and JavaScript.";
 
     filesContainer.append(
+      heading,
+      description,
       createFileCard("index.html", state.files.html),
       createFileCard("style.css", state.files.css),
       createFileCard("script.js", state.files.js)
     );
   }
 
-  function downloadFile(fileName, content) {
-    const blob = new Blob([content], {
-      type: "text/plain;charset=utf-8"
-    });
-
-    const url = URL.createObjectURL(blob);
-    const link = document.createElement("a");
-
-    link.href = url;
-    link.download = fileName;
-    link.style.display = "none";
-
-    document.body.appendChild(link);
-    link.click();
-    link.remove();
-
-    setTimeout(() => URL.revokeObjectURL(url), 2000);
-  }
-
-  function downloadWebsiteFiles() {
+  function downloadAllFiles() {
     if (!state.files) {
-      setStatus("Generate a website before downloading files.", "error");
+      setStatus("Generate a website before downloading.", "error");
       return;
     }
 
@@ -323,7 +358,7 @@
     }, 500);
 
     setStatus(
-      "Your three website files are being downloaded. Check your Downloads folder.",
+      "Your three website files are being downloaded.",
       "success"
     );
   }
@@ -332,31 +367,35 @@
     event.preventDefault();
 
     if (state.generating) return;
-
     if (!form.reportValidity()) return;
 
     const brief = collectBrief();
 
-    if (!brief.projectName || !brief.businessType || !brief.description) {
+    if (
+      !brief.projectName ||
+      !brief.businessType ||
+      !brief.description
+    ) {
       setStatus(
-        "Please enter the project name, business type and website description.",
+        "Enter your project name, business type and description.",
         "error"
       );
       return;
     }
 
-    state.projectName = brief.projectName;
-
     setGenerating(true);
+
     setStatus(
-      "Joseph AI is creating your website. This may take a little while...",
+      "Joseph AI is creating your website. Please wait...",
       "loading"
     );
 
-    if (downloadButton) downloadButton.disabled = true;
+    if (downloadButton) {
+      downloadButton.disabled = true;
+    }
 
     try {
-      const result = await generateWebsite(brief);
+      const result = await requestWebsite(brief);
 
       state.files = result.files;
       state.previewMode = "desktop";
@@ -364,24 +403,21 @@
       renderPreview();
       renderGeneratedFiles();
 
-      if (downloadButton) downloadButton.disabled = false;
+      if (downloadButton) {
+        downloadButton.disabled = false;
+      }
 
       setStatus(
-        "Website generated successfully! You can preview, inspect and download your files.",
+        `Website generated successfully using ${result.provider}. Preview and inspect your website below.`,
         "success"
       );
 
-      if (result.note) {
-        console.info("Website Builder:", result.note);
-      }
-
-      if (result.model) {
-        console.info("Website generation model:", result.model);
-      }
+      console.info("Website provider:", result.provider);
+      console.info("Website model:", result.model);
+      console.info("Website note:", result.note);
 
     } catch (error) {
-      console.error("Website generation error:", error);
-
+      console.error("Website Studio error:", error);
       setStatus(error.message, "error");
 
     } finally {
@@ -389,9 +425,9 @@
     }
   }
 
-  function setPreviewMode(mode) {
+  function changePreviewMode(mode) {
     if (!state.files) {
-      setStatus("Generate a website before changing preview mode.", "error");
+      setStatus("Generate a website first.", "error");
       return;
     }
 
@@ -403,23 +439,23 @@
 
   if (desktopButton) {
     desktopButton.addEventListener("click", () => {
-      setPreviewMode("desktop");
+      changePreviewMode("desktop");
     });
   }
 
   if (mobileButton) {
     mobileButton.addEventListener("click", () => {
-      setPreviewMode("mobile");
+      changePreviewMode("mobile");
     });
   }
 
   if (downloadButton) {
     downloadButton.disabled = true;
-    downloadButton.addEventListener("click", downloadWebsiteFiles);
+    downloadButton.addEventListener("click", downloadAllFiles);
   }
 
-  // Saving is intentionally not connected yet.
-  // We must inspect the existing projects API before implementing it.
+  // Project saving will be connected after inspecting
+  // the existing projects API.
   if (saveButton) {
     saveButton.disabled = true;
   }
@@ -429,6 +465,6 @@
     "info"
   );
 
-  console.log("Joseph AI Website Studio connection loaded.");
+  console.log("Joseph AI Website Studio loaded.");
 })();
       
