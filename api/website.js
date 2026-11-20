@@ -38,6 +38,25 @@ function cleanGeneratedText(value) {
     .trim();
 }
 
+function normalizeGeneratedCode(value) {
+  if (typeof value !== "string") return "";
+
+  const escapedNewlines = (value.match(/\\n/g) || []).length;
+  const actualNewlines = (value.match(/\n/g) || []).length;
+
+  // Correct AI output that contains literal "\n"
+  // instead of real line breaks.
+  if (escapedNewlines >= 3 && actualNewlines === 0) {
+    return value
+      .replace(/\\r\\n/g, "\n")
+      .replace(/\\n/g, "\n")
+      .replace(/\\r/g, "\n")
+      .replace(/\\t/g, "  ");
+  }
+
+  return value;
+}
+
 function extractJSON(text) {
   const cleaned = cleanGeneratedText(text);
 
@@ -57,6 +76,7 @@ function extractJSON(text) {
   }
 }
 
+
 function validateFiles(data) {
   if (!data || typeof data !== "object") {
     throw new Error("The AI returned an invalid website response.");
@@ -64,21 +84,21 @@ function validateFiles(data) {
 
   const files = data.files || data;
 
-  const html = cleanGeneratedText(
-    files.html || files["index.html"]
+  const html = normalizeGeneratedCode(
+    cleanGeneratedText(files.html || files["index.html"])
   );
 
-  const css = cleanGeneratedText(
-    files.css || files["style.css"]
+  const css = normalizeGeneratedCode(
+    cleanGeneratedText(files.css || files["style.css"])
   );
 
-  const js = cleanGeneratedText(
-    files.js || files["script.js"]
+  const js = normalizeGeneratedCode(
+    cleanGeneratedText(files.js || files["script.js"])
   );
 
   if (!html || !css || !js) {
     throw new Error(
-      "The AI did not generate all three website files."
+      "The AI did not generate all three website files. Please try again."
     );
   }
 
@@ -88,19 +108,16 @@ function validateFiles(data) {
     js.length > MAX_FILE_LENGTH
   ) {
     throw new Error(
-      "The generated website is too large. Try a shorter description."
+      "The generated website is too large. Please try a shorter description."
     );
   }
 
-  if (
-    !/<html[\s>]/i.test(html) &&
-    !/<!doctype html/i.test(html)
-  ) {
-    throw new Error("The generated HTML document is incomplete.");
+  if (!/<html[\s>]/i.test(html) && !/<!doctype html/i.test(html)) {
+    throw new Error("The generated HTML file is incomplete.");
   }
 
   return { html, css, js };
-}
+}  
 
 function buildPrompt(briefText) {
   return `
