@@ -7,12 +7,21 @@
  * Primary provider: Google Gemini
  * Backup provider: Groq
  *
- * Generates:
- * - index.html
- * - style.css
- * - script.js
+ * Input:
+ * POST /api/website
+ * {
+ *   "action": "generate",
+ *   "brief": {
+ *     "projectName": "...",
+ *     "businessType": "...",
+ *     "description": "..."
+ *   }
+ * }
  *
- * Runtime: Vercel Node.js
+ * Output:
+ * index.html
+ * style.css
+ * script.js
  */
 
 const MAX_BRIEF_LENGTH = 12000;
@@ -108,54 +117,117 @@ function validateFiles(data) {
   }
 
   if (!/<html[\s>]/i.test(html) || !/<\/html>/i.test(html)) {
-    throw new Error(
-      "The generated HTML document is incomplete."
-    );
+    throw new Error("The generated HTML document is incomplete.");
   }
 
   if (!/<body[\s>]/i.test(html) || !/<\/body>/i.test(html)) {
-    throw new Error(
-      "The generated HTML is missing its body section."
-    );
+    throw new Error("The generated HTML is missing its body section.");
   }
 
   return { html, css, js };
+}
+
+/*
+ * Accepts the object sent by website-builder.js.
+ * Also supports a plain text brief for compatibility.
+ */
+function normalizeBrief(brief) {
+  if (typeof brief === "string") {
+    const description = brief.trim();
+
+    if (!description) {
+      throw new Error(
+        "Please describe the website you want to build."
+      );
+    }
+
+    return description;
+  }
+
+  if (!brief || typeof brief !== "object" || Array.isArray(brief)) {
+    throw new Error(
+      "Please provide your website project details."
+    );
+  }
+
+  const description =
+    typeof brief.description === "string"
+      ? brief.description.trim()
+      : "";
+
+  if (!description) {
+    throw new Error(
+      "Please describe the website you want to build."
+    );
+  }
+
+  // Keep all supplied project fields instead of losing user details.
+  const safeBrief = {};
+
+  for (const [key, value] of Object.entries(brief)) {
+    if (value === undefined || value === null) continue;
+
+    if (
+      typeof value === "string" ||
+      typeof value === "number" ||
+      typeof value === "boolean"
+    ) {
+      safeBrief[key] = value;
+    } else if (Array.isArray(value)) {
+      safeBrief[key] = value.map(item =>
+        typeof item === "string" ||
+        typeof item === "number" ||
+        typeof item === "boolean"
+          ? item
+          : String(item)
+      );
+    } else if (typeof value === "object") {
+      safeBrief[key] = JSON.stringify(value);
+    }
+  }
+
+  const briefText = JSON.stringify(safeBrief, null, 2);
+
+  if (briefText.length > MAX_BRIEF_LENGTH) {
+    throw new Error(
+      `Your project details are too long. Keep them under ${MAX_BRIEF_LENGTH} characters.`
+    );
+  }
+
+  return briefText;
 }
 
 function buildPrompt(briefText) {
   return `
 You are Joseph AI's professional website development engine.
 
-Your task is to create a complete, polished, responsive FRONTEND WEBSITE
-based on the user's project brief.
+Create a complete, polished, responsive FRONTEND WEBSITE
+based on the user's project details below.
 
-THE USER'S BRIEF IS THE SOURCE OF TRUTH.
+THE USER'S PROJECT DETAILS ARE THE SOURCE OF TRUTH.
 
-USER PROJECT BRIEF:
+USER PROJECT DETAILS:
 ${briefText}
 
 ==================================================
 1. FOLLOW THE USER'S INSTRUCTIONS
 ==================================================
 
-- Read the entire brief before writing code.
-- Follow the requested business type, project name, audience, sections,
-  features, visual style, colors, and reference details.
+- Read all project details before writing code.
+- Follow the requested project name, business type, audience,
+  sections, features, visual style, colors and references.
 - Do not replace the requested project with a generic template.
 - Do not silently remove requested sections or features.
-- Do not invent business addresses, phone numbers, email addresses,
-  prices, testimonials, awards, certifications, or company history.
-- If information is missing, use neutral editable content instead of
-  pretending that invented information is real.
+- Do not invent addresses, phone numbers, emails, prices,
+  testimonials, awards, certifications or company history.
 - Use the requested brand name consistently.
-- Make the website look like a real professional business website,
-  not a coding exercise or a basic demo.
+- If information is missing, use neutral editable content.
 
 ==================================================
-2. PROFESSIONAL DESIGN QUALITY
+2. PROFESSIONAL DESIGN
 ==================================================
 
-Create a polished, modern, visually impressive website.
+Create a polished, modern and visually impressive website.
 
 Use:
 - Strong visual hierarchy.
@@ -165,8 +237,8 @@ Use:
 - Clear calls to action.
 - Responsive cards and grids.
 - Good contrast and readable text.
-- Thoughtful colors based on the user's brief.
-- Subtle transitions and hover effects where appropriate.
+- Colors based on the user's instructions.
+- Subtle transitions and hover effects.
 - Professional mobile and desktop layouts.
 
 Avoid:
@@ -175,12 +247,11 @@ Avoid:
 - Random colors.
 - Tiny text.
 - Overcrowded sections.
-- Generic layouts that ignore the business type.
-- Fake 3D effects that make the website difficult to use.
-- Unnecessary animations that slow down the page.
+- Generic designs that ignore the business type.
+- Unnecessary animations.
 
-The first screen should communicate what the business offers and
-provide a clear next action.
+The first screen should communicate what the business offers
+and provide a clear next action.
 
 ==================================================
 3. RESPONSIVE DESIGN
@@ -192,14 +263,14 @@ The website must work on:
 - Tablets.
 - Desktop screens.
 
-Requirements:
-- Include a correct viewport meta tag.
-- Use flexible layouts and responsive CSS.
-- Prevent horizontal overflow.
-- Make navigation usable on mobile.
-- Ensure buttons are easy to tap.
-- Make images scale correctly.
-- Keep text readable at small screen sizes.
+Include:
+- A correct viewport meta tag.
+- Flexible layouts and responsive CSS.
+- No horizontal overflow.
+- Usable mobile navigation.
+- Easy-to-tap buttons.
+- Properly scaled images.
+- Readable text on small screens.
 
 ==================================================
 4. NAVIGATION MUST WORK
@@ -208,81 +279,69 @@ Requirements:
 Every navigation link must have a valid destination.
 
 For a one-page website:
-- Use section links such as #home, #about, #services, #gallery,
-  #menu, and #contact.
-- Every referenced section ID must actually exist.
-- Do not create links to sections that do not exist.
+- Use section links such as #home, #about, #services,
+  #gallery, #menu and #contact.
+- Every referenced section ID must exist.
+- Do not link to sections that do not exist.
 - Navigation must scroll to the correct section.
-- A mobile menu button must open and close the menu.
-- Selecting a mobile navigation link must close the menu.
+- Mobile menu buttons must open and close the menu.
+- Selecting a mobile link must close the menu.
 
-IMPORTANT PREVIEW SAFETY:
+PREVIEW SAFETY:
 - Never use href="/" or href="/index.html" for internal navigation.
 - Never use href="index.html" for internal navigation.
 - Never use target="_top" or target="_parent".
-- Never navigate the parent page or the website hosting the preview.
-- Never use window.top, window.parent, or parent.location.
-- Do not use window.location or location.href to navigate between
-  sections. Use normal #section anchor links.
+- Never navigate the parent page or preview host.
+- Never use window.top, window.parent or parent.location.
+- Do not use window.location or location.href for section navigation.
+- Use normal #section anchor links.
 - Do not create links that escape the generated website preview.
-- External links must only be used when the brief requires them or
-  provides the destination.
 
 ==================================================
-5. BUTTONS AND INTERACTIVE FEATURES
+5. BUTTONS AND INTERACTIONS
 ==================================================
 
 Every visible button must do something meaningful.
 
 Examples:
 - Mobile menu buttons must open and close the menu.
-- WhatsApp buttons must open the correct WhatsApp conversation
+- WhatsApp buttons must open the correct conversation
   when the user supplied a contact number.
 - Phone buttons must use tel: with a supplied phone number.
-- Email buttons must use mailto: with a supplied email address.
+- Email buttons must use mailto: with a supplied email.
 - Section buttons must navigate to real sections.
 - Gallery controls must work if included.
-- Tabs, accordions, and other interactive controls must work
-  if included.
+- Tabs and accordions must work if included.
 
 Do not create decorative buttons that do nothing.
 
 Do not invent contact details.
 
-If a contact number is supplied:
-- Preserve the correct country code.
-- For a Nigerian number beginning with 0, convert it to country code
-  234 and remove the leading 0.
-- Remove spaces and punctuation from the WhatsApp number.
+For a supplied Nigerian phone number beginning with 0:
+- Remove the leading 0.
+- Add country code 234.
+- Remove spaces and punctuation.
 - Use https://wa.me/ followed by the normalized digits.
-
-Do not invent a WhatsApp number if none was provided.
 
 ==================================================
 6. IMAGES AND GALLERIES
 ==================================================
 
-Images must not break the website.
-
-- Use only stable, direct image URLs when you are confident they are valid.
+- Use stable, direct image URLs only when confident they are valid.
 - Prefer known static images hosted on images.unsplash.com.
 - Never use source.unsplash.com.
-- Never use random image URLs or fabricated image paths.
-- Do not use URLs that require a special API key.
-- Do not use an image URL if you are unsure it exists.
-- Do not create a gallery full of broken image links.
-- Add meaningful alt text to images.
+- Never invent image URLs or file paths.
+- Do not use image URLs requiring an API key.
+- Add meaningful alt text.
 - Use object-fit: cover where appropriate.
-- Give image containers sensible dimensions and responsive behavior.
+- Give image containers sensible dimensions.
 
-If a suitable reliable image URL is not known:
-- Use a visually attractive CSS background, gradient, or designed
-  placeholder instead of a broken image.
-- Keep the layout professional even without external images.
+If a reliable image URL is not known:
+- Use an attractive CSS background, gradient or placeholder.
+- Keep the design professional without external images.
 
-For gallery images, ensure the image itself is styled correctly.
+For gallery images, use a wrapper with aspect-ratio.
 Do not apply padding-bottom aspect-ratio tricks directly to img elements.
-Use a wrapper with aspect-ratio and place the image inside it.
 
 ==================================================
 7. FORMS AND BUSINESS FUNCTIONALITY
@@ -290,22 +349,17 @@ Use a wrapper with aspect-ratio and place the image inside it.
 
 This generation stage creates a frontend website only.
 
-- Do not pretend a form has been sent to a server.
+- Do not pretend a form was sent to a server.
 - Do not display fake booking confirmations.
 - Do not claim an order was saved or paid for.
 - Do not pretend customer accounts or databases exist.
 - Do not create fake payment processing.
-- Do not claim that a booking, order, or message was received
-  unless a real service is connected.
+- Do not invent API endpoints.
 
 If a form is requested but no backend is available:
 - Provide honest frontend behavior.
-- Where appropriate, use a supplied email address or WhatsApp number
-  to let the customer contact the business.
-- Otherwise show a clear message explaining that submission
-  needs a backend connection.
-
-Do not invent API endpoints or pretend they work.
+- Where appropriate, use a supplied email or WhatsApp contact.
+- Otherwise explain that submission needs a backend connection.
 
 ==================================================
 8. CODE QUALITY
@@ -314,7 +368,7 @@ Do not invent API endpoints or pretend they work.
 HTML:
 - Return a complete HTML5 document.
 - Include semantic elements.
-- Include title, description, and viewport metadata.
+- Include title, description and viewport metadata.
 - Use correct IDs and accessible labels.
 - Link style.css and script.js using relative filenames.
 
@@ -323,26 +377,26 @@ CSS:
 - Include responsive breakpoints.
 - Avoid conflicting or incomplete selectors.
 - Ensure images and cards display correctly.
-- Include visible focus states for keyboard accessibility.
+- Include visible keyboard focus states.
 
 JavaScript:
 - Return complete working JavaScript.
-- Use defensive checks before accessing optional elements.
-- Avoid uncaught errors when an optional element is missing.
+- Check optional elements before accessing them.
+- Avoid uncaught errors when optional elements are missing.
 - Use event listeners for interactions.
 - Do not use inline JavaScript event attributes.
-- Do not use eval or dynamically execute arbitrary code.
+- Do not use eval.
 - Do not manipulate the parent page or escape the preview.
 
-Make sure the HTML, CSS, and JavaScript work together.
+Make sure all three files work together.
 
 ==================================================
-9. OUTPUT FORMAT — STRICT
+9. STRICT OUTPUT FORMAT
 ==================================================
 
 Return ONLY one valid JSON object.
 
-It must have exactly these three string properties:
+It must contain exactly these three string properties:
 
 {
   "html": "complete HTML document",
@@ -351,25 +405,24 @@ It must have exactly these three string properties:
 }
 
 Rules:
-- Do not use Markdown code fences.
-- Do not include explanations outside the JSON.
-- Do not add extra properties.
+- No Markdown code fences.
+- No explanations outside the JSON.
+- No extra properties.
 - Escape JSON strings correctly.
-- Do not omit any of the three files.
-- Do not shorten the code with comments such as
-  "rest of code here" or "add your styles here".
+- Do not omit any file.
+- Do not shorten code using comments such as "rest of code here".
 - Return complete usable code, not pseudocode.
 
-Before responding, internally check:
+Before responding, check:
 1. Does the website match the user's brief?
 2. Are all requested sections present?
-3. Do all internal navigation links point to existing IDs?
-4. Do the visible buttons have working behavior?
-5. Is the mobile menu functional?
-6. Are image URLs stable, or are safe placeholders used?
-7. Does the CSS support mobile and desktop?
-8. Does the JavaScript avoid errors when optional elements are absent?
-9. Does the site avoid navigating outside its preview?
+3. Do internal links point to existing IDs?
+4. Do visible buttons have working behavior?
+5. Is mobile navigation functional?
+6. Are images reliable or safely replaced by placeholders?
+7. Does CSS support mobile and desktop?
+8. Does JavaScript avoid errors?
+9. Does the site stay inside its preview?
 10. Are all three files complete?
 
 Now generate the complete website.
@@ -467,9 +520,7 @@ async function generateWithGemini(prompt) {
       .join("") || "";
 
   if (!text) {
-    throw new Error(
-      "Gemini returned no website code."
-    );
+    throw new Error("Gemini returned no website code.");
   }
 
   const files = validateFiles(extractJSON(text));
@@ -506,7 +557,7 @@ async function generateWithGroq(prompt) {
           {
             role: "system",
             content:
-              "You are a professional website developer. Follow the user's brief and return only the exact JSON object requested."
+              "You are a professional website developer. Follow the user's project details and return only the requested JSON object."
           },
           {
             role: "user",
@@ -527,9 +578,7 @@ async function generateWithGroq(prompt) {
     data?.choices?.[0]?.message?.content || "";
 
   if (!text) {
-    throw new Error(
-      "Groq returned no website code."
-    );
+    throw new Error("Groq returned no website code.");
   }
 
   const files = validateFiles(extractJSON(text));
@@ -568,25 +617,22 @@ export default async function handler(req, res) {
     });
   }
 
-  const brief = body.brief;
+  let briefText;
 
-  if (
-    typeof brief !== "string" ||
-    !brief.trim()
-  ) {
+  try {
+    briefText = normalizeBrief(body.brief);
+  } catch (error) {
     return sendJSON(res, 400, {
       success: false,
-      error: "Please describe the website you want to build."
+      error: error.message
     });
   }
-
-  const briefText = brief.trim();
 
   if (briefText.length > MAX_BRIEF_LENGTH) {
     return sendJSON(res, 413, {
       success: false,
       error:
-        `Your project brief is too long. Keep it under ${MAX_BRIEF_LENGTH} characters.`
+        `Your project details are too long. Keep them under ${MAX_BRIEF_LENGTH} characters.`
     });
   }
 
@@ -606,7 +652,7 @@ export default async function handler(req, res) {
   let geminiError = null;
   let groqError = null;
 
-  // Try Gemini first.
+  // Primary provider: Gemini.
   if (process.env.GEMINI_API_KEY) {
     try {
       const result = await generateWithGemini(prompt);
@@ -624,7 +670,7 @@ export default async function handler(req, res) {
     }
   }
 
-  // Use Groq if Gemini is unavailable or fails.
+  // Backup provider: Groq.
   if (process.env.GROQ_API_KEY) {
     try {
       const result = await generateWithGroq(prompt);
@@ -651,5 +697,5 @@ export default async function handler(req, res) {
       groq: groqError || "Not attempted."
     }
   });
-    }
-    
+}
+  
