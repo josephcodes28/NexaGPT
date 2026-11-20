@@ -1,7 +1,7 @@
 (() => {
   "use strict";
 
-  const API_URL = "/api/chat";
+  const API_URL = "/api/brain";
   const MAX_FILE_BYTES = 5 * 1024 * 1024;
   const MAX_ATTACHMENTS = 5;
   const STORAGE = {
