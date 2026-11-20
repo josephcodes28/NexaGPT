@@ -1,6 +1,6 @@
 
 "use strict";
-
+import { dispatchCapability } from "./dispatcher.js";
 /*
  * JOSEPH AI V2
  * ADVANCED INTERNET RESEARCH BRAIN
@@ -1203,6 +1203,78 @@ export default async function handler(req, res) {
       body.attachments
     );
 
+    /* ---------------------------------------------
+       INTERNAL CAPABILITY DISPATCH
+    --------------------------------------------- */
+
+    /*
+     * Website and content generation are handled
+     * internally. Ordinary conversation and image
+     * requests continue through the central Brain.
+     */
+
+    if (attachments.length === 0) {
+      const dispatched = await dispatchCapability(message);
+
+      if (dispatched.handled) {
+        if (!dispatched.success) {
+          return sendJSON(res, 502, {
+            success: false,
+            error:
+              dispatched.error ||
+              "NexaGPT could not complete the requested task.",
+            capability: dispatched.capability
+          });
+        }
+
+        const toolResult = dispatched.result || {};
+
+        let artifact = null;
+        let reply = "";
+
+        if (dispatched.capability === "website") {
+          artifact = {
+            type: "website",
+            title: "Generated website",
+            files: toolResult.files || {},
+            provider: toolResult.provider || null,
+            model: toolResult.model || null
+          };
+
+          reply =
+            "I've generated your website. Its HTML, CSS and JavaScript files are ready.";
+        }
+
+        if (dispatched.capability === "content") {
+          artifact = {
+            type: "content",
+            title: "Generated content",
+            content: toolResult.content || "",
+            provider: toolResult.provider || null,
+            model: toolResult.model || null
+          };
+
+          reply =
+            "I've created the requested content. Your result is ready.";
+        }
+
+        return sendJSON(res, 200, {
+          success: true,
+          reply,
+          text: reply,
+          capability: dispatched.capability,
+          artifact,
+          provider: toolResult.provider || null,
+          model: toolResult.model || null,
+          fallbackUsed: toolResult.fallbackUsed === true,
+          sources: [],
+          webSearchUsed: false,
+          webSearchError: null,
+          attachmentCount: 0
+        });
+      }
+}
+  
     const geminiKey = process.env.GEMINI_API_KEY;
     const groqKey = process.env.GROQ_API_KEY;
     const tavilyKey = process.env.TAVILY_API_KEY;
