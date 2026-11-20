@@ -7,7 +7,7 @@
  * Primary provider: Google Gemini
  * Backup provider: Groq
  *
- * Output:
+ * Generates:
  * - index.html
  * - style.css
  * - script.js
@@ -25,7 +25,11 @@ const GROQ_DEFAULT_MODEL = "openai/gpt-oss-120b";
 
 function sendJSON(res, status, data) {
   res.status(status);
-  res.setHeader("Content-Type", "application/json; charset=utf-8");
+  res.setHeader(
+    "Content-Type",
+    "application/json; charset=utf-8"
+  );
+
   return res.end(JSON.stringify(data));
 }
 
@@ -38,42 +42,38 @@ function cleanGeneratedText(value) {
     .trim();
 }
 
-/*
- * Correct AI responses that contain escaped line breaks
- * throughout a source file instead of actual line breaks.
- *
- * Avoid changing normal JavaScript strings unnecessarily.
- */
 function normalizeGeneratedCode(value) {
   if (typeof value !== "string") return "";
 
   const escapedNewlines = (value.match(/\\n/g) || []).length;
   const actualNewlines = (value.match(/\n/g) || []).length;
 
-  if (
-    escapedNewlines >= 3 &&
-    escapedNewlines > actualNewlines * 2
-  ) {
+  if (escapedNewlines >= 3 && actualNewlines <= 1) {
     return value
       .replace(/\\r\\n/g, "\n")
       .replace(/\\n/g, "\n")
-      .replace(/\\r/g, "\n");
+      .replace(/\\r/g, "\n")
+      .replace(/\\t/g, "  ");
   }
 
   return value;
 }
 
-function extractJSON(text) {
-  const cleaned = cleanGeneratedText(text);
+function extractJSON(value) {
+  if (typeof value !== "string") {
+    throw new Error("The AI returned an empty response.");
+  }
+
+  const cleaned = cleanGeneratedText(value);
 
   try {
     return JSON.parse(cleaned);
-  } catch {
+  } catch (_) {
     const firstBrace = cleaned.indexOf("{");
     const lastBrace = cleaned.lastIndexOf("}");
 
     if (firstBrace === -1 || lastBrace <= firstBrace) {
-      throw new Error("The AI did not return valid JSON.");
+      throw new Error("The AI response was not valid JSON.");
     }
 
     return JSON.parse(
@@ -84,26 +84,16 @@ function extractJSON(text) {
 
 function validateFiles(data) {
   if (!data || typeof data !== "object") {
-    throw new Error("The AI returned an invalid website response.");
+    throw new Error("The AI did not return a valid project.");
   }
 
-  const files = data.files || data;
-
-  const html = normalizeGeneratedCode(
-    cleanGeneratedText(files.html || files["index.html"])
-  );
-
-  const css = normalizeGeneratedCode(
-    cleanGeneratedText(files.css || files["style.css"])
-  );
-
-  const js = normalizeGeneratedCode(
-    cleanGeneratedText(files.js || files["script.js"])
-  );
+  const html = normalizeGeneratedCode(data.html);
+  const css = normalizeGeneratedCode(data.css);
+  const js = normalizeGeneratedCode(data.js);
 
   if (!html || !css || !js) {
     throw new Error(
-      "The AI did not generate all three website files."
+      "The AI must return all three files: HTML, CSS, and JavaScript."
     );
   }
 
@@ -113,167 +103,283 @@ function validateFiles(data) {
     js.length > MAX_FILE_LENGTH
   ) {
     throw new Error(
-      "The generated website is too large. Please shorten the project description."
+      "The generated project is too large. Please simplify the project brief."
     );
   }
 
-  if (
-    !/<html[\s>]/i.test(html) &&
-    !/<!doctype html/i.test(html)
-  ) {
-    throw new Error("The generated HTML document is incomplete.");
+  if (!/<html[\s>]/i.test(html) || !/<\/html>/i.test(html)) {
+    throw new Error(
+      "The generated HTML document is incomplete."
+    );
   }
 
-  if (!/<\/html\s*>/i.test(html)) {
-    throw new Error("The generated HTML document is missing its closing tag.");
+  if (!/<body[\s>]/i.test(html) || !/<\/body>/i.test(html)) {
+    throw new Error(
+      "The generated HTML is missing its body section."
+    );
   }
 
   return { html, css, js };
 }
 
-/* ---------------- GENERATION PROMPT ---------------- */
-
 function buildPrompt(briefText) {
   return `
 You are Joseph AI's professional website development engine.
 
-Your job is to create a polished, complete and responsive website
-suitable for a real paying client.
+Your task is to create a complete, polished, responsive FRONTEND WEBSITE
+based on the user's project brief.
 
-PROJECT DETAILS:
+THE USER'S BRIEF IS THE SOURCE OF TRUTH.
+
+USER PROJECT BRIEF:
 ${briefText}
 
-OUTPUT FORMAT:
+==================================================
+1. FOLLOW THE USER'S INSTRUCTIONS
+==================================================
 
-Return exactly one valid JSON object with these three properties:
+- Read the entire brief before writing code.
+- Follow the requested business type, project name, audience, sections,
+  features, visual style, colors, and reference details.
+- Do not replace the requested project with a generic template.
+- Do not silently remove requested sections or features.
+- Do not invent business addresses, phone numbers, email addresses,
+  prices, testimonials, awards, certifications, or company history.
+- If information is missing, use neutral editable content instead of
+  pretending that invented information is real.
+- Use the requested brand name consistently.
+- Make the website look like a real professional business website,
+  not a coding exercise or a basic demo.
+
+==================================================
+2. PROFESSIONAL DESIGN QUALITY
+==================================================
+
+Create a polished, modern, visually impressive website.
+
+Use:
+- Strong visual hierarchy.
+- Professional typography.
+- Consistent spacing and alignment.
+- Attractive section layouts.
+- Clear calls to action.
+- Responsive cards and grids.
+- Good contrast and readable text.
+- Thoughtful colors based on the user's brief.
+- Subtle transitions and hover effects where appropriate.
+- Professional mobile and desktop layouts.
+
+Avoid:
+- Plain unstyled HTML.
+- Excessive empty space.
+- Random colors.
+- Tiny text.
+- Overcrowded sections.
+- Generic layouts that ignore the business type.
+- Fake 3D effects that make the website difficult to use.
+- Unnecessary animations that slow down the page.
+
+The first screen should communicate what the business offers and
+provide a clear next action.
+
+==================================================
+3. RESPONSIVE DESIGN
+==================================================
+
+The website must work on:
+- Small Android phones.
+- Larger mobile phones.
+- Tablets.
+- Desktop screens.
+
+Requirements:
+- Include a correct viewport meta tag.
+- Use flexible layouts and responsive CSS.
+- Prevent horizontal overflow.
+- Make navigation usable on mobile.
+- Ensure buttons are easy to tap.
+- Make images scale correctly.
+- Keep text readable at small screen sizes.
+
+==================================================
+4. NAVIGATION MUST WORK
+==================================================
+
+Every navigation link must have a valid destination.
+
+For a one-page website:
+- Use section links such as #home, #about, #services, #gallery,
+  #menu, and #contact.
+- Every referenced section ID must actually exist.
+- Do not create links to sections that do not exist.
+- Navigation must scroll to the correct section.
+- A mobile menu button must open and close the menu.
+- Selecting a mobile navigation link must close the menu.
+
+IMPORTANT PREVIEW SAFETY:
+- Never use href="/" or href="/index.html" for internal navigation.
+- Never use href="index.html" for internal navigation.
+- Never use target="_top" or target="_parent".
+- Never navigate the parent page or the website hosting the preview.
+- Never use window.top, window.parent, or parent.location.
+- Do not use window.location or location.href to navigate between
+  sections. Use normal #section anchor links.
+- Do not create links that escape the generated website preview.
+- External links must only be used when the brief requires them or
+  provides the destination.
+
+==================================================
+5. BUTTONS AND INTERACTIVE FEATURES
+==================================================
+
+Every visible button must do something meaningful.
+
+Examples:
+- Mobile menu buttons must open and close the menu.
+- WhatsApp buttons must open the correct WhatsApp conversation
+  when the user supplied a contact number.
+- Phone buttons must use tel: with a supplied phone number.
+- Email buttons must use mailto: with a supplied email address.
+- Section buttons must navigate to real sections.
+- Gallery controls must work if included.
+- Tabs, accordions, and other interactive controls must work
+  if included.
+
+Do not create decorative buttons that do nothing.
+
+Do not invent contact details.
+
+If a contact number is supplied:
+- Preserve the correct country code.
+- For a Nigerian number beginning with 0, convert it to country code
+  234 and remove the leading 0.
+- Remove spaces and punctuation from the WhatsApp number.
+- Use https://wa.me/ followed by the normalized digits.
+
+Do not invent a WhatsApp number if none was provided.
+
+==================================================
+6. IMAGES AND GALLERIES
+==================================================
+
+Images must not break the website.
+
+- Use only stable, direct image URLs when you are confident they are valid.
+- Prefer known static images hosted on images.unsplash.com.
+- Never use source.unsplash.com.
+- Never use random image URLs or fabricated image paths.
+- Do not use URLs that require a special API key.
+- Do not use an image URL if you are unsure it exists.
+- Do not create a gallery full of broken image links.
+- Add meaningful alt text to images.
+- Use object-fit: cover where appropriate.
+- Give image containers sensible dimensions and responsive behavior.
+
+If a suitable reliable image URL is not known:
+- Use a visually attractive CSS background, gradient, or designed
+  placeholder instead of a broken image.
+- Keep the layout professional even without external images.
+
+For gallery images, ensure the image itself is styled correctly.
+Do not apply padding-bottom aspect-ratio tricks directly to img elements.
+Use a wrapper with aspect-ratio and place the image inside it.
+
+==================================================
+7. FORMS AND BUSINESS FUNCTIONALITY
+==================================================
+
+This generation stage creates a frontend website only.
+
+- Do not pretend a form has been sent to a server.
+- Do not display fake booking confirmations.
+- Do not claim an order was saved or paid for.
+- Do not pretend customer accounts or databases exist.
+- Do not create fake payment processing.
+- Do not claim that a booking, order, or message was received
+  unless a real service is connected.
+
+If a form is requested but no backend is available:
+- Provide honest frontend behavior.
+- Where appropriate, use a supplied email address or WhatsApp number
+  to let the customer contact the business.
+- Otherwise show a clear message explaining that submission
+  needs a backend connection.
+
+Do not invent API endpoints or pretend they work.
+
+==================================================
+8. CODE QUALITY
+==================================================
+
+HTML:
+- Return a complete HTML5 document.
+- Include semantic elements.
+- Include title, description, and viewport metadata.
+- Use correct IDs and accessible labels.
+- Link style.css and script.js using relative filenames.
+
+CSS:
+- Return the complete stylesheet.
+- Include responsive breakpoints.
+- Avoid conflicting or incomplete selectors.
+- Ensure images and cards display correctly.
+- Include visible focus states for keyboard accessibility.
+
+JavaScript:
+- Return complete working JavaScript.
+- Use defensive checks before accessing optional elements.
+- Avoid uncaught errors when an optional element is missing.
+- Use event listeners for interactions.
+- Do not use inline JavaScript event attributes.
+- Do not use eval or dynamically execute arbitrary code.
+- Do not manipulate the parent page or escape the preview.
+
+Make sure the HTML, CSS, and JavaScript work together.
+
+==================================================
+9. OUTPUT FORMAT — STRICT
+==================================================
+
+Return ONLY one valid JSON object.
+
+It must have exactly these three string properties:
 
 {
-  "html": "Complete HTML document",
-  "css": "Complete CSS stylesheet",
-  "js": "Complete JavaScript file"
+  "html": "complete HTML document",
+  "css": "complete CSS stylesheet",
+  "js": "complete JavaScript file"
 }
 
-All three properties must contain complete source code.
+Rules:
+- Do not use Markdown code fences.
+- Do not include explanations outside the JSON.
+- Do not add extra properties.
+- Escape JSON strings correctly.
+- Do not omit any of the three files.
+- Do not shorten the code with comments such as
+  "rest of code here" or "add your styles here".
+- Return complete usable code, not pseudocode.
 
-GENERAL DESIGN REQUIREMENTS:
+Before responding, internally check:
+1. Does the website match the user's brief?
+2. Are all requested sections present?
+3. Do all internal navigation links point to existing IDs?
+4. Do the visible buttons have working behavior?
+5. Is the mobile menu functional?
+6. Are image URLs stable, or are safe placeholders used?
+7. Does the CSS support mobile and desktop?
+8. Does the JavaScript avoid errors when optional elements are absent?
+9. Does the site avoid navigating outside its preview?
+10. Are all three files complete?
 
-1. Build a professional website that matches the actual business.
-2. Do not produce a generic or unfinished template.
-3. Create a distinctive visual identity using the requested colours and style.
-4. Use polished typography, spacing, layout, cards, buttons and visual hierarchy.
-5. Make the first screen attractive and give it a clear headline and call to action.
-6. Make the website work on mobile phones, tablets and desktop screens.
-7. Use semantic HTML and accessible labels.
-8. Include the sections and features requested by the user.
-9. Use tasteful animations and useful hover and focus states.
-10. Use vanilla JavaScript only.
-11. Do not include hidden tracking, analytics or malicious code.
-12. Do not invent business contact details, addresses, reviews, awards or factual claims.
-13. Use clearly labelled placeholders when information is missing.
-14. Do not pretend that a frontend-only feature has a working backend.
-
-IMPORTANT NAVIGATION REQUIREMENTS:
-
-1. Every internal navigation link must use a section ID.
-2. Examples:
-   href="#home"
-   href="#about"
-   href="#menu"
-   href="#gallery"
-   href="#contact"
-
-3. Every internal link must point to an element that actually exists.
-4. Do not use "/" or the website root for internal navigation.
-5. Do not use links that point to Joseph AI or another unrelated website.
-6. Do not use JavaScript to navigate the parent window.
-7. Do not use window.top, window.parent or parent.document.
-8. Internal navigation must stay within the generated website.
-9. Add smooth scrolling where appropriate.
-10. Mobile navigation must open and close correctly.
-11. Mobile navigation must close after a navigation link is selected.
-12. Ensure the mobile menu button has a working click handler and correct aria-expanded state.
-
-IMAGE REQUIREMENTS:
-
-1. Use relevant, direct image URLs from reliable public image sources.
-2. Prefer stable images hosted on images.unsplash.com when appropriate.
-3. Do not use source.unsplash.com or random image-search endpoints.
-4. Do not invent image URLs.
-5. Do not use broken local image paths.
-6. Every image must have meaningful alt text.
-7. Add sensible width, height and object-fit styling.
-8. Add an image error handler or fallback presentation so a failed image does not leave a broken-image icon.
-9. Gallery images must have consistent sizing and responsive layouts.
-10. Do not let an image error break the rest of the website.
-
-HTML REQUIREMENTS:
-
-1. Return a complete HTML5 document.
-2. Include charset, viewport and useful SEO metadata.
-3. Link to style.css.
-4. Load script.js near the end of the body.
-5. Use unique IDs for all page sections.
-6. Ensure every button has an appropriate type.
-7. Ensure all navigation targets exist.
-8. Do not place the entire stylesheet or JavaScript inside the HTML.
-9. Do not include scripts that load Joseph AI or unrelated application files.
-10. Do not include absolute links to the Joseph AI application.
-
-CSS REQUIREMENTS:
-
-1. Return a complete stylesheet.
-2. Include mobile and desktop responsive breakpoints.
-3. Style every section and visible control.
-4. Ensure gallery images use aspect-ratio and object-fit correctly.
-5. Include visible keyboard focus states.
-6. Avoid unfinished or unstyled sections.
-7. Avoid hiding the entire page with opacity or animation.
-8. Respect reduced-motion preferences.
-
-JAVASCRIPT REQUIREMENTS:
-
-1. Return a complete JavaScript file.
-2. Use vanilla JavaScript only.
-3. Wait for DOMContentLoaded when necessary.
-4. Check that optional elements exist before attaching event listeners.
-5. Implement mobile navigation.
-6. Implement internal section navigation without leaving the generated website.
-7. Implement gallery interactions only when gallery elements exist.
-8. Never access or modify the parent Joseph AI application.
-9. Never use window.top or window.parent.
-10. Do not claim that forms have been sent or saved when there is no backend.
-11. Frontend-only forms must clearly explain that they are demonstrations or provide an honest contact alternative.
-12. Every visible interactive control must have a meaningful action.
-
-SECURITY AND QUALITY:
-
-- No hidden data collection.
-- No fake payment processing.
-- No fake login.
-- No fake database.
-- No fake order confirmation.
-- No fake contact-message delivery.
-- No unrelated external scripts.
-- No broken navigation links.
-- No placeholder buttons pretending to work.
-
-FINAL OUTPUT:
-
-Return only valid JSON.
-Include exactly the three string properties:
-html, css and js.
-
-Do not include Markdown fences.
-Do not include explanations outside the JSON.
+Now generate the complete website.
 `;
 }
-
-/* ---------------- PROVIDER REQUEST HELPER ---------------- */
 
 async function fetchJSON(url, options, timeoutMs) {
   const controller = new AbortController();
 
-  const timeoutId = setTimeout(
+  const timeout = setTimeout(
     () => controller.abort(),
     timeoutMs
   );
@@ -284,66 +390,59 @@ async function fetchJSON(url, options, timeoutMs) {
       signal: controller.signal
     });
 
+    const raw = await response.text();
+
     let data;
 
     try {
-      data = await response.json();
-    } catch {
+      data = JSON.parse(raw);
+    } catch (_) {
       throw new Error(
-        "Provider returned an unreadable response."
+        `Provider returned an unreadable response (HTTP ${response.status}).`
       );
     }
 
     if (!response.ok) {
       const message =
         data?.error?.message ||
-        data?.error ||
-        `Provider returned HTTP ${response.status}.`;
+        data?.message ||
+        `Provider request failed (HTTP ${response.status}).`;
 
-      throw new Error(
-        `HTTP ${response.status}: ${String(message).slice(0, 400)}`
-      );
+      throw new Error(message);
     }
 
     return data;
-
   } catch (error) {
     if (error.name === "AbortError") {
       throw new Error("Provider request timed out.");
     }
 
     throw error;
-
   } finally {
-    clearTimeout(timeoutId);
+    clearTimeout(timeout);
   }
 }
-
-/* ---------------- GEMINI PRIMARY ---------------- */
 
 async function generateWithGemini(prompt) {
   const apiKey = process.env.GEMINI_API_KEY;
 
   if (!apiKey) {
-    throw new Error("Gemini API key is not configured.");
+    throw new Error("GEMINI_API_KEY is not configured.");
   }
 
   const model =
     process.env.GEMINI_MODEL ||
     "gemini-3.5-flash-lite";
 
-  const endpoint =
-    "https://generativelanguage.googleapis.com/v1beta/models/" +
-    encodeURIComponent(model) +
-    ":generateContent";
+  const url =
+    `https://generativelanguage.googleapis.com/v1beta/models/${model}:generateContent?key=${apiKey}`;
 
-  const result = await fetchJSON(
-    endpoint,
+  const data = await fetchJSON(
+    url,
     {
       method: "POST",
       headers: {
-        "Content-Type": "application/json",
-        "x-goog-api-key": apiKey
+        "Content-Type": "application/json"
       },
       body: JSON.stringify({
         contents: [
@@ -353,8 +452,8 @@ async function generateWithGemini(prompt) {
           }
         ],
         generationConfig: {
-          temperature: 0.65,
           responseMimeType: "application/json",
+          temperature: 0.35,
           maxOutputTokens: 12000
         }
       })
@@ -362,18 +461,18 @@ async function generateWithGemini(prompt) {
     GEMINI_TIMEOUT
   );
 
-  const generatedText =
-    result?.candidates?.[0]?.content?.parts
+  const text =
+    data?.candidates?.[0]?.content?.parts
       ?.map(part => part.text || "")
-      .join("")
-      .trim() || "";
+      .join("") || "";
 
-  if (!generatedText) {
-    throw new Error("Gemini returned an empty response.");
+  if (!text) {
+    throw new Error(
+      "Gemini returned no website code."
+    );
   }
 
-  const parsed = extractJSON(generatedText);
-  const files = validateFiles(parsed);
+  const files = validateFiles(extractJSON(text));
 
   return {
     files,
@@ -382,29 +481,24 @@ async function generateWithGemini(prompt) {
   };
 }
 
-/* ---------------- GROQ BACKUP ---------------- */
-
 async function generateWithGroq(prompt) {
   const apiKey = process.env.GROQ_API_KEY;
 
   if (!apiKey) {
-    throw new Error("Groq API key is not configured.");
+    throw new Error("GROQ_API_KEY is not configured.");
   }
 
   const model =
     process.env.GROQ_WEBSITE_MODEL ||
     GROQ_DEFAULT_MODEL;
 
-  const endpoint =
-    "https://api.groq.com/openai/v1/chat/completions";
-
-  const result = await fetchJSON(
-    endpoint,
+  const data = await fetchJSON(
+    "https://api.groq.com/openai/v1/chat/completions",
     {
       method: "POST",
       headers: {
         "Content-Type": "application/json",
-        "Authorization": `Bearer ${apiKey}`
+        Authorization: `Bearer ${apiKey}`
       },
       body: JSON.stringify({
         model,
@@ -412,35 +506,33 @@ async function generateWithGroq(prompt) {
           {
             role: "system",
             content:
-              "You are Joseph AI's professional website development engine. Return only valid JSON with complete html, css and js string properties. Follow every navigation, image, accessibility and security requirement in the user's prompt."
+              "You are a professional website developer. Follow the user's brief and return only the exact JSON object requested."
           },
           {
             role: "user",
             content: prompt
           }
         ],
-        temperature: 0.65,
-        max_completion_tokens: 12000,
         response_format: {
           type: "json_object"
-        }
+        },
+        temperature: 0.35,
+        max_completion_tokens: 12000
       })
     },
     GROQ_TIMEOUT
   );
 
-  const generatedText =
-    result?.choices?.[0]?.message?.content || "";
+  const text =
+    data?.choices?.[0]?.message?.content || "";
 
-  if (
-    typeof generatedText !== "string" ||
-    !generatedText.trim()
-  ) {
-    throw new Error("Groq returned an empty response.");
+  if (!text) {
+    throw new Error(
+      "Groq returned no website code."
+    );
   }
 
-  const parsed = extractJSON(generatedText);
-  const files = validateFiles(parsed);
+  const files = validateFiles(extractJSON(text));
 
   return {
     files,
@@ -449,7 +541,13 @@ async function generateWithGroq(prompt) {
   };
 }
 
-/* ---------------- MAIN API HANDLER ---------------- */
+function getErrorMessage(error) {
+  if (!error) return "Unknown provider error.";
+
+  return String(error.message || error)
+    .replace(/https?:\/\/\S+/g, "[provider URL]")
+    .slice(0, 500);
+}
 
 export default async function handler(req, res) {
   if (req.method !== "POST") {
@@ -457,7 +555,7 @@ export default async function handler(req, res) {
 
     return sendJSON(res, 405, {
       success: false,
-      error: "Only POST requests are supported."
+      error: "Method not allowed. Use POST."
     });
   }
 
@@ -466,66 +564,52 @@ export default async function handler(req, res) {
   if (body.action !== "generate") {
     return sendJSON(res, 400, {
       success: false,
-      error: "Unsupported action. Use action: generate."
+      error: "Unsupported action."
     });
   }
 
   const brief = body.brief;
 
   if (
-    !brief ||
-    typeof brief !== "object" ||
-    Array.isArray(brief)
+    typeof brief !== "string" ||
+    !brief.trim()
   ) {
     return sendJSON(res, 400, {
       success: false,
-      error: "Please provide your website project details."
+      error: "Please describe the website you want to build."
     });
   }
 
-  let briefText;
-
-  try {
-    briefText = JSON.stringify(brief);
-  } catch {
-    return sendJSON(res, 400, {
-      success: false,
-      error: "The website description could not be read."
-    });
-  }
+  const briefText = brief.trim();
 
   if (briefText.length > MAX_BRIEF_LENGTH) {
-    return sendJSON(res, 400, {
+    return sendJSON(res, 413, {
       success: false,
-      error: "Your website description is too long. Please shorten it."
+      error:
+        `Your project brief is too long. Keep it under ${MAX_BRIEF_LENGTH} characters.`
     });
   }
 
-  const geminiKey = process.env.GEMINI_API_KEY;
-  const groqKey = process.env.GROQ_API_KEY;
-
-  if (!geminiKey && !groqKey) {
+  if (
+    !process.env.GEMINI_API_KEY &&
+    !process.env.GROQ_API_KEY
+  ) {
     return sendJSON(res, 500, {
       success: false,
       error:
-        "Website Builder is not configured. Add GEMINI_API_KEY or GROQ_API_KEY to Vercel."
+        "Website generation is not configured. Add GEMINI_API_KEY or GROQ_API_KEY in Vercel environment variables."
     });
   }
 
   const prompt = buildPrompt(briefText);
 
-  let primaryError = null;
-  let backupError = null;
+  let geminiError = null;
+  let groqError = null;
 
   // Try Gemini first.
-  if (geminiKey) {
+  if (process.env.GEMINI_API_KEY) {
     try {
       const result = await generateWithGemini(prompt);
-
-      console.log(
-        "Website generated successfully using Gemini:",
-        result.model
-      );
 
       return sendJSON(res, 200, {
         success: true,
@@ -533,35 +617,17 @@ export default async function handler(req, res) {
         provider: result.provider,
         model: result.model,
         fallbackUsed: false,
-        note:
-          "Frontend files generated. Real database, login, payment and order services require separate backend integrations."
+        note: "Website generated successfully."
       });
-
     } catch (error) {
-      primaryError = error.message;
-
-      console.error(
-        "Gemini Website Builder failed:",
-        primaryError
-      );
+      geminiError = getErrorMessage(error);
     }
-  } else {
-    primaryError = "Gemini API key is not configured.";
   }
 
-  // Automatically try Groq if Gemini fails.
-  if (groqKey) {
+  // Use Groq if Gemini is unavailable or fails.
+  if (process.env.GROQ_API_KEY) {
     try {
-      console.log(
-        "Gemini unavailable. Switching to Groq."
-      );
-
       const result = await generateWithGroq(prompt);
-
-      console.log(
-        "Website generated successfully using Groq:",
-        result.model
-      );
 
       return sendJSON(res, 200, {
         success: true,
@@ -570,29 +636,20 @@ export default async function handler(req, res) {
         model: result.model,
         fallbackUsed: true,
         note:
-          "Gemini was unavailable, so Groq generated the website. Real backend services require separate integrations."
+          "Website generated successfully using the backup provider."
       });
-
     } catch (error) {
-      backupError = error.message;
-
-      console.error(
-        "Groq Website Builder failed:",
-        backupError
-      );
+      groqError = getErrorMessage(error);
     }
-  } else {
-    backupError = "Groq API key is not configured.";
   }
 
   return sendJSON(res, 502, {
     success: false,
-    error:
-      "Both website generation providers failed. Please try again later.",
+    error: "Joseph AI could not generate the website.",
     details: {
-      gemini: primaryError,
-      groq: backupError
+      gemini: geminiError || "Not attempted.",
+      groq: groqError || "Not attempted."
     }
   });
     }
-          
+    
