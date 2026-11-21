@@ -1,0 +1,25 @@
+{
+  "project": "NexaGPT Universal AI",
+  "version": "1.0.0",
+  "entry": "index.html",
+  "api_entry": "/api/brain",
+  "files": [
+    "README.md",
+    "api/_shared.js",
+    "api/brain.js",
+    "api/dispatcher.js",
+    "api/engines/app.js",
+    "api/engines/chat.js",
+    "api/engines/game.js",
+    "api/engines/ideas.js",
+    "api/engines/jobs.js",
+    "api/engines/media.js",
+    "api/engines/website.js",
+    "index.html",
+    "package.json",
+    "project-renderer.js",
+    "script.js",
+    "style.css",
+    "vercel.json"
+  ]
+}

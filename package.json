@@ -1,0 +1,8 @@
+{
+  "name": "nexagpt-universal-ai",
+  "version": "1.0.0",
+  "private": true,
+  "type": "module",
+  "engines": { "node": ">=20" },
+  "scripts": { "check": "node --check api/brain.js && node --check api/dispatcher.js && node --check api/engines/website.js && node --check api/engines/app.js && node --check api/engines/game.js && node --check api/engines/jobs.js && node --check api/engines/media.js && node --check api/engines/ideas.js" }
+}
