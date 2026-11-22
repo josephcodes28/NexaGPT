@@ -30,10 +30,17 @@ export async function requireUser(req) {
   }
 
   const issuer = new URL(baseUrl).origin;
-  const { payload } = await jwtVerify(match[1], getKeys(), {
-    issuer,
-    algorithms: ["EdDSA"]
-  });
+  let payload;
+  try {
+    ({ payload } = await jwtVerify(match[1], getKeys(), {
+      issuer,
+      algorithms: ["EdDSA"]
+    }));
+  } catch {
+    const error = new Error("Your sign-in session is invalid or expired. Please sign in again.");
+    error.status = 401;
+    throw error;
+  }
 
   if (typeof payload.sub !== "string" || !payload.sub) {
     const error = new Error("The sign-in token does not contain a valid account ID.");
