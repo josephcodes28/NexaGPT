@@ -251,9 +251,10 @@
   }
 
   async function callBrain(payload) {
+    const token = await accessToken();
     const response = await fetch("/api/brain", {
       method: "POST",
-      headers: { "Content-Type": "application/json" },
+      headers: { "Content-Type": "application/json", "Authorization": `Bearer ${token}` },
       body: JSON.stringify(payload)
     });
 
@@ -509,4 +510,5 @@
   });
 
   render();
+  refreshAuthState();
 })();
