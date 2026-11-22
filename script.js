@@ -28,6 +28,85 @@
   const send = $("#sendBtn");
   const sidebar = $("#sidebar");
   const scrim = $("#sidebarScrim");
+  let authMode = "signup";
+  let currentUser = null;
+
+  function authClient() {
+    if (!window.NexaAuth?.adapter) throw new Error("The sign-in service has not loaded. Refresh and try again.");
+    return window.NexaAuth.adapter;
+  }
+
+  function showAuth(mode = "signup") {
+    authMode = mode;
+    const backdrop = $("#authBackdrop");
+    if (!backdrop) return;
+    backdrop.hidden = false;
+    $("#authTitle").textContent = mode === "signup" ? "Create your account" : "Welcome back";
+    $("#authCopy").textContent = mode === "signup" ? "Create a NexaGPT account to keep your workspace private." : "Sign in to continue to your NexaGPT workspace.";
+    $("#authNameWrap").hidden = mode !== "signup";
+    $("#authPassword").autocomplete = mode === "signup" ? "new-password" : "current-password";
+    $("#authSubmit").textContent = mode === "signup" ? "Create account" : "Sign in";
+    $("#authSwitchText").textContent = mode === "signup" ? "Already have an account?" : "New to NexaGPT?";
+    $("#authSwitch").textContent = mode === "signup" ? "Sign in" : "Create account";
+    $("#authError").textContent = "";
+  }
+
+  function hideAuth() { $("#authBackdrop").hidden = true; }
+
+  async function refreshAuthState() {
+    try {
+      const session = await authClient().getSession();
+      currentUser = session?.data?.user || session?.data?.session?.user || null;
+    } catch (error) {
+      console.warn("Could not restore NexaGPT session:", error);
+      currentUser = null;
+    }
+    $("#accountButton").textContent = currentUser ? "Account · Sign out" : "Sign in";
+  }
+
+  async function accessToken() {
+    if (!currentUser) await refreshAuthState();
+    if (!currentUser) { showAuth("signup"); throw new Error("Please sign in or create an account first."); }
+    const token = await window.NexaAuth.getJWTToken();
+    if (!token) { currentUser = null; $("#accountButton").textContent = "Sign in"; showAuth("signin"); throw new Error("Your session has expired. Please sign in again."); }
+    return token;
+  }
+
+  $("#authSwitch").addEventListener("click", () => showAuth(authMode === "signup" ? "signin" : "signup"));
+  $("#authClose").addEventListener("click", hideAuth);
+  $("#authBackdrop").addEventListener("click", event => { if (event.target.id === "authBackdrop") hideAuth(); });
+  $("#accountButton").addEventListener("click", async () => {
+    await refreshAuthState();
+    if (!currentUser) return showAuth("signin");
+    try { await authClient().signOut(); currentUser = null; $("#accountButton").textContent = "Sign in"; toast("You have signed out."); }
+    catch (error) { toast(error.message || "Could not sign out."); }
+  });
+  $("#authForm").addEventListener("submit", async event => {
+    event.preventDefault();
+    const button = $("#authSubmit");
+    const email = $("#authEmail").value.trim();
+    const password = $("#authPassword").value;
+    const name = $("#authName").value.trim();
+    $("#authError").textContent = "";
+    button.disabled = true;
+    button.textContent = authMode === "signup" ? "Creating account…" : "Signing in…";
+    try {
+      const client = authClient();
+      const result = authMode === "signup"
+        ? await client.signUp.email({ email, password, name: name || email.split("@")[0] })
+        : await client.signIn.email({ email, password });
+      if (result?.error) throw new Error(result.error.message || "Authentication failed.");
+      await refreshAuthState();
+      if (!currentUser) throw new Error("The account service did not return an active session. Check your email verification settings and try signing in.");
+      hideAuth();
+      toast(authMode === "signup" ? "Your NexaGPT account is ready." : "You are signed in.");
+    } catch (error) {
+      $("#authError").textContent = error?.message || "Could not complete sign-in.";
+    } finally {
+      button.disabled = false;
+      button.textContent = authMode === "signup" ? "Create account" : "Sign in";
+    }
+  });
 
   function persist() {
     localStorage.setItem(STORE, JSON.stringify(conversations));
