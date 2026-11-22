@@ -142,7 +142,7 @@
       const client = authClient();
       if (authStep === "verify") {
         const otp = $("#authOtp").value.trim();
-        if (!/^\\d{6}$/.test(otp)) throw new Error("Enter the 6-digit code from your Neon Auth email.");
+        if (!/^[0-9]{6}$/.test(otp)) throw new Error("Enter the 6-digit code from your Neon Auth email.");
         const verification = await client.emailOtp.verifyEmail({ email, otp });
         if (verification?.error) throw new Error(verification.error.message || "The verification code could not be accepted.");
         await refreshAuthState();
