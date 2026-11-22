@@ -1,6 +1,8 @@
 {
   "version": 2,
   "cleanUrls": true,
+  "buildCommand": "npm run build",
+  "outputDirectory": ".",
   "headers": [
     {
       "source": "/(.*)",
@@ -19,6 +21,5 @@
         }
       ]
     }
-  ],
-  "buildCommand": "npm run build"
+  ]
 }
