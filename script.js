@@ -175,7 +175,17 @@
       }
 
       result = await client.signIn.email({ email, password });
-      if (result?.error) throw new Error(result.error.message || "Sign-in failed.");
+      if (result?.error) {
+        const message = result.error.message || "Sign-in failed.";
+        if (/email.*(not|isn.t)\\s*verified|verify.*email/i.test(message) && client.emailOtp?.sendVerificationOtp) {
+          pendingPassword = password;
+          const sent = await client.emailOtp.sendVerificationOtp({ email, type: "email-verification" });
+          if (sent?.error) throw new Error(sent.error.message || message);
+          showVerificationStep(email);
+          return;
+        }
+        throw new Error(message);
+      }
       await refreshAuthState();
       if (!currentUser) throw new Error("Sign-in did not return an active session. Please try again.");
       hideAuth();
