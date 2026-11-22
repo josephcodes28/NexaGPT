@@ -254,7 +254,10 @@
     const token = await accessToken();
     const response = await fetch("/api/brain", {
       method: "POST",
-      headers: { "Content-Type": "application/json", "Authorization": `Bearer ${token}` },
+      headers: {
+        "Content-Type": "application/json",
+        "Authorization": `Bearer ${token}`
+      },
       body: JSON.stringify(payload)
     });
 
