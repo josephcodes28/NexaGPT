@@ -11,6 +11,7 @@
   <link href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@400;500;600;700&family=Space+Grotesk:wght@500;600;700&display=swap" rel="stylesheet">
   <link rel="stylesheet" href="/style.css">
   <script src="/project-renderer.js" defer></script>
+  <script src="/auth-client.bundle.js" defer></script>
   <script src="/script.js" defer></script>
 </head>
 <body>
@@ -42,7 +43,7 @@
         <span class="mobile-brand"><span class="brand-mark mini">N</span>NexaGPT</span>
         <button class="model-pill" id="modelLabel">NexaGPT Assistant <span class="chevron">⌄</span></button>
       </div>
-      <div class="topbar-right"><span class="connection"><i></i><span id="connectionText">Workspace ready</span></span><button class="icon-btn" id="themeToggle" title="Toggle theme">◐</button></div>
+      <div class="topbar-right"><button class="account-btn" id="accountButton" type="button">Sign in</button><span class="connection"><i></i><span id="connectionText">Workspace ready</span></span><button class="icon-btn" id="themeToggle" title="Toggle theme">◐</button></div>
     </header>
     <section class="chat-view" id="chatView">
       <div class="chat-scroll" id="chatScrollArea"><div class="chat-content" id="chatMessages">
@@ -76,6 +77,23 @@
     </section>
     <section class="workspace-view" id="workspaceView" hidden><div class="workspace-inner" id="workspaceContent"></div></section>
   </main>
+</div>
+<div class="auth-backdrop" id="authBackdrop" hidden>
+  <section class="auth-dialog" role="dialog" aria-modal="true" aria-labelledby="authTitle">
+    <button class="auth-close" id="authClose" type="button" aria-label="Close">×</button>
+    <div class="auth-brand">N</div>
+    <p class="eyebrow">YOUR PRIVATE AI WORKSPACE</p>
+    <h2 id="authTitle">Welcome to NexaGPT</h2>
+    <p class="auth-copy" id="authCopy">Sign in or create an account to continue.</p>
+    <form id="authForm">
+      <label id="authNameWrap">Your name<input id="authName" name="name" autocomplete="name" maxlength="80" placeholder="Your name"></label>
+      <label>Email address<input id="authEmail" name="email" type="email" autocomplete="email" required maxlength="254" placeholder="you@example.com"></label>
+      <label>Password<input id="authPassword" name="password" type="password" autocomplete="current-password" required minlength="8" maxlength="128" placeholder="At least 8 characters"></label>
+      <p class="auth-error" id="authError" role="alert"></p>
+      <button class="auth-submit" id="authSubmit" type="submit">Create account</button>
+    </form>
+    <p class="auth-switch"><span id="authSwitchText">Already have an account?</span> <button id="authSwitch" type="button">Sign in</button></p>
+  </section>
 </div>
 <div class="toast" id="toast"></div>
 </body>
