@@ -29,26 +29,74 @@
   const sidebar = $("#sidebar");
   const scrim = $("#sidebarScrim");
   let authMode = "signup";
+  let authStep = "credentials";
   let currentUser = null;
+  let pendingPassword = "";
 
   function authClient() {
     if (!window.NexaAuth?.adapter) throw new Error("The sign-in service has not loaded. Refresh and try again.");
     return window.NexaAuth.adapter;
   }
 
+  function ensureOtpField() {
+    let wrap = $("#authOtpWrap");
+    if (wrap) return wrap;
+    wrap = document.createElement("label");
+    wrap.id = "authOtpWrap";
+    wrap.hidden = true;
+    wrap.textContent = "Email verification code";
+    const input = document.createElement("input");
+    input.id = "authOtp";
+    input.name = "otp";
+    input.type = "text";
+    input.inputMode = "numeric";
+    input.autocomplete = "one-time-code";
+    input.pattern = "[0-9]{6}";
+    input.maxLength = 6;
+    input.placeholder = "Enter the 6-digit code";
+    input.required = true;
+    wrap.appendChild(input);
+    $("#authPassword").closest("label").after(wrap);
+    return wrap;
+  }
+
   function showAuth(mode = "signup") {
     authMode = mode;
+    authStep = "credentials";
     const backdrop = $("#authBackdrop");
     if (!backdrop) return;
     backdrop.hidden = false;
+    ensureOtpField().hidden = true;
+    $("#authOtp").required = false;
+    $("#authNameWrap").hidden = mode !== "signup";
+    $("#authEmail").readOnly = false;
+    $("#authPassword").closest("label").hidden = false;
     $("#authTitle").textContent = mode === "signup" ? "Create your account" : "Welcome back";
     $("#authCopy").textContent = mode === "signup" ? "Create a NexaGPT account to keep your workspace private." : "Sign in to continue to your NexaGPT workspace.";
-    $("#authNameWrap").hidden = mode !== "signup";
     $("#authPassword").autocomplete = mode === "signup" ? "new-password" : "current-password";
     $("#authSubmit").textContent = mode === "signup" ? "Create account" : "Sign in";
     $("#authSwitchText").textContent = mode === "signup" ? "Already have an account?" : "New to NexaGPT?";
     $("#authSwitch").textContent = mode === "signup" ? "Sign in" : "Create account";
+    $("#authSwitch").hidden = false;
+    $("#authSwitchText").hidden = false;
     $("#authError").textContent = "";
+  }
+
+  function showVerificationStep(email) {
+    authStep = "verify";
+    $("#authTitle").textContent = "Verify your email";
+    $("#authCopy").textContent = "We sent a 6-digit verification code to " + email + ". Enter it below to activate your NexaGPT account.";
+    $("#authNameWrap").hidden = true;
+    $("#authPassword").closest("label").hidden = true;
+    $("#authEmail").readOnly = true;
+    $("#authOtpWrap").hidden = false;
+    $("#authOtp").required = true;
+    $("#authOtp").value = "";
+    $("#authSubmit").textContent = "Verify email";
+    $("#authSwitch").hidden = true;
+    $("#authSwitchText").hidden = true;
+    $("#authError").textContent = "";
+    $("#authOtp").focus();
   }
 
   function hideAuth() { $("#authBackdrop").hidden = true; }
@@ -89,22 +137,54 @@
     const name = $("#authName").value.trim();
     $("#authError").textContent = "";
     button.disabled = true;
-    button.textContent = authMode === "signup" ? "Creating account…" : "Signing in…";
+    button.textContent = authStep === "verify" ? "Verifying…" : (authMode === "signup" ? "Creating account…" : "Signing in…");
     try {
       const client = authClient();
-      const result = authMode === "signup"
-        ? await client.signUp.email({ email, password, name: name || email.split("@")[0] })
-        : await client.signIn.email({ email, password });
-      if (result?.error) throw new Error(result.error.message || "Authentication failed.");
+      if (authStep === "verify") {
+        const otp = $("#authOtp").value.trim();
+        if (!/^\\d{6}$/.test(otp)) throw new Error("Enter the 6-digit code from your Neon Auth email.");
+        const verification = await client.emailOtp.verifyEmail({ email, otp });
+        if (verification?.error) throw new Error(verification.error.message || "The verification code could not be accepted.");
+        await refreshAuthState();
+        if (!currentUser && pendingPassword) {
+          const login = await client.signIn.email({ email, password: pendingPassword });
+          if (login?.error) throw new Error(login.error.message || "Your email is verified. Please sign in with your password.");
+          await refreshAuthState();
+        }
+        if (!currentUser) throw new Error("Your email was verified, but no active session was returned. Please sign in.");
+        pendingPassword = "";
+        hideAuth();
+        toast("Your email is verified. Welcome to NexaGPT!");
+        return;
+      }
+
+      let result;
+      if (authMode === "signup") {
+        pendingPassword = password;
+        result = await client.signUp.email({ email, password, name: name || email.split("@")[0] });
+        if (result?.error) throw new Error(result.error.message || "Account creation failed.");
+        await refreshAuthState();
+        if (currentUser) {
+          pendingPassword = "";
+          hideAuth();
+          toast("Your NexaGPT account is ready.");
+          return;
+        }
+        showVerificationStep(email);
+        return;
+      }
+
+      result = await client.signIn.email({ email, password });
+      if (result?.error) throw new Error(result.error.message || "Sign-in failed.");
       await refreshAuthState();
-      if (!currentUser) throw new Error("The account service did not return an active session. Check your email verification settings and try signing in.");
+      if (!currentUser) throw new Error("Sign-in did not return an active session. Please try again.");
       hideAuth();
-      toast(authMode === "signup" ? "Your NexaGPT account is ready." : "You are signed in.");
+      toast("You are signed in.");
     } catch (error) {
-      $("#authError").textContent = error?.message || "Could not complete sign-in.";
+      $("#authError").textContent = error?.message || "Could not complete authentication.";
     } finally {
       button.disabled = false;
-      button.textContent = authMode === "signup" ? "Create account" : "Sign in";
+      button.textContent = authStep === "verify" ? "Verify email" : (authMode === "signup" ? "Create account" : "Sign in");
     }
   });
 
