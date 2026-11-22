@@ -3,6 +3,19 @@
   "version": "1.0.0",
   "private": true,
   "type": "module",
-  "engines": { "node": ">=20" },
-  "scripts": { "check": "node --check api/brain.js && node --check api/dispatcher.js && node --check api/engines/website.js && node --check api/engines/app.js && node --check api/engines/game.js && node --check api/engines/jobs.js && node --check api/engines/media.js && node --check api/engines/ideas.js" }
+  "engines": {
+    "node": ">=20"
+  },
+  "scripts": {
+    "check": "node --check api/brain.js && node --check api/_auth.js && node --check api/dispatcher.js && node --check api/engines/website.js && node --check api/engines/app.js && node --check api/engines/game.js && node --check api/engines/jobs.js && node --check api/engines/media.js && node --check api/engines/ideas.js && node --check auth-client-entry.js && node --check scripts/build-auth.js && node --check script.js",
+    "build": "node scripts/build-auth.js"
+  },
+  "dependencies": {
+    "@neondatabase/auth": "0.7.0-beta",
+    "@neondatabase/serverless": "1.1.0",
+    "jose": "6.2.5"
+  },
+  "devDependencies": {
+    "esbuild": "0.25.12"
+  }
 }
