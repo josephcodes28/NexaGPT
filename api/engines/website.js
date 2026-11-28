@@ -31,6 +31,12 @@ function normalizeConcept(concept, index) {
 export async function handleWebsite(ctx) {
   const brief = clean(ctx.message, 9000);
   const chosen = ctx.selection;
+  const websiteType = ctx.task?.websiteType || "website";
+  if (websiteType === "backend" || websiteType === "fullstack") {
+    return { reply: websiteType === "backend"
+      ? "I understood that you want a BACKEND-only system (server/API, database and business logic), not a frontend website. The current website engine does not yet generate or test backend-only projects, so I will not give you a frontend and pretend it is a backend. This capability still needs to be implemented."
+      : "I understood that you want a FULL-STACK website (frontend plus a real backend, database and business logic). The current website engine currently generates frontend files only, so I will not claim that a frontend prototype is a complete full-stack system. Full-stack generation still needs to be implemented." };
+  }
 
   if (!chosen) {
     const stylePreference = requestedStyle(brief);
@@ -40,7 +46,7 @@ Understand the exact request and design for that specific industry. Never force 
 USER REQUEST:
 ${brief}
 
-STYLE REQUEST DETECTED: ${stylePreference}
+WEBSITE SCOPE: ${websiteType.toUpperCase()} (this engine currently proceeds only with frontend generation).\nSTYLE REQUEST DETECTED: ${stylePreference}
 
 Return JSON only:
 {
